@@ -3,12 +3,6 @@
 
 import { http } from "./apiClient";
 
-export async function login(matricula: string, password: string) {
-  return http<{
-    token: string;
-    user: { id: number; name: string; role: "user" | "admin"; matricula: string };
-  }>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ matricula, password }),
-  });
-}
+export const login = (matricula: string) =>
+  http(`/auth/login`, { method: "POST", body: JSON.stringify({ matricula }) });
+

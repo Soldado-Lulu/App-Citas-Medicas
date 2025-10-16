@@ -1,20 +1,30 @@
-// Layout del "área usuario" (grupo invisible). Protege rutas por rol "user".
-// Si no hay sesión: redirige a /login. Si es admin: lo manda a /admin-dashboard.
-
-import { Stack, Redirect } from "expo-router";
-import { useAuth } from "../../src/hooks/useAuth";
+import { Stack, Link } from "expo-router";
+import { Pressable, Text } from "react-native";
 
 export default function UserLayout() {
-  const { user } = useAuth();
-  if (!user) return <Redirect href="/" />;
-  if (user.role !== "user") return <Redirect href="/admin-dashboard" />;
-
   return (
-    <Stack>
-      <Stack.Screen name="dashboard" options={{ title: "Inicio" }} />
-      <Stack.Screen name="citas/index" options={{ title: "Mis Citas" }} />
-      <Stack.Screen name="citas/nueva" options={{ title: "Nueva Cita" }} />
-     
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        headerTitleAlign: "left",
+        headerStyle: { backgroundColor: "#0B74DE" },
+        headerTintColor: "#fff",
+      }}
+    >
+      <Stack.Screen
+        name="dashboard"
+        options={{
+          title: "Inicio",
+          headerRight: () => (
+            <Link href="/user/perfil" asChild>
+              <Pressable style={{ paddingHorizontal: 12 }}>
+                <Text style={{ color: "#fff", fontWeight: "600" }}>Perfil</Text>
+              </Pressable>
+            </Link>
+          ),
+        }}
+      />
+      {/* Las demás pantallas (citas/, etc.) heredan este header */}
     </Stack>
   );
 }

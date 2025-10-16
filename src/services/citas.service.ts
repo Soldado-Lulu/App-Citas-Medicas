@@ -15,28 +15,11 @@ export type CitaUsuario = {
   medico_especialidad?: string;
 };
 
-export async function getDisponibilidad(fechaISO: string) {
-  return http<
-    Array<{
-      medico: { id: number; nombre: string; especialidad: string };
-      slots: Array<{ start: string; end: string; libre: boolean }>;
-    }>
-  >(`/citas/disponibilidad?fecha=${fechaISO}`);
-}
+export const getDisponibilidad = (fecha: string) =>
+  http(`/disponibilidad?fecha=${fecha}`);
 
-export async function crearCita(payload: {
-  person_id: number;
-  booked_by: number;
-  medico_id: number;
-  start: string;
-  end: string;
-}) {
-  return http<CitaUsuario>("/citas", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
+export const crearCita = (payload: any) =>
+  http(`/citas`, { method: "POST", body: JSON.stringify(payload) });
 
-export async function getMisCitas(titularId: number) {
-  return http<CitaUsuario[]>(`/citas?user_id=${titularId}`);
-}
+export const getMisCitas = (titularId: number) =>
+  http(`/citas?titular_id=${titularId}`);
