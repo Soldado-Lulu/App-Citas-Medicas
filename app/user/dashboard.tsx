@@ -9,7 +9,7 @@ export default function UserDashboard() {
   return (
     <View style={{ padding: 20, gap: 12 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>Hola, {user?.name}</Text>
-
+        
       {/* 👇 con prefijos /user/... */}
       <Link href="/user/citas/nueva" asChild>
         <Button title="Agendar nueva cita" />
