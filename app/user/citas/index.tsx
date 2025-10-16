@@ -32,6 +32,7 @@ export default function MisCitas() {
       {rows.map(c => (
         <View key={c.id} style={{ padding: 12, borderWidth: 1, borderRadius: 8 }}>
           <Text>Médico ID: {c.medico_id}</Text>
+          <Text >Persona ID: {c.name}</Text>
           <Text>Inicio: {dayjs(c.start).format("DD/MM/YYYY HH:mm")}</Text>
           <Text>Estado: {c.estado}</Text>
         </View>
