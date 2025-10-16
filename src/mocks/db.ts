@@ -14,9 +14,9 @@ export const DB = {
 
   // Afiliados (dependientes) de los usuarios (2 para el usuario 1, 1 para el usuario 2)
   afiliados: [
-    { id: 101, titular_id: 1, name: "Hijo Uno",   relation: "Hijo" },
-    { id: 102, titular_id: 1, name: "Esposa Uno", relation: "Esposa" },
-    { id: 201, titular_id: 2, name: "Hija Dos",   relation: "Hija" },
+    { id: 101, titular_id: 1, name: "pedrito",   relation: "Hijo" },
+    { id: 102, titular_id: 1, name: "martaa", relation: "Esposa" },
+    { id: 201, titular_id: 2, name: "julia",   relation: "Hija" },
   ],
 
   // Configuración global de agenda
@@ -31,6 +31,9 @@ export const DB = {
   medicos: [
     {
       id: 1,
+      user_id:1,
+      persona_id:2,
+      medico_id:1,
       nombre: "Dr. Pérez",
       especialidad: "Medicina General",
       duracion_min: 20,
@@ -46,6 +49,9 @@ export const DB = {
     },
     {
       id: 2,
+      user_id:1,
+      persona_id:2,
+      medico_id:2,
       nombre: "Dra. Gómez",
       especialidad: "Pediatría",
       duracion_min: 15,
@@ -68,6 +74,7 @@ export const DB = {
     person_id: number;   // 👈 persona para la que se reserva (titular o afiliado)
     booked_by: number;   // titular que reservó (para auditoría)
     medico_id: number;
+
     start: string;       // ISO
     end: string;         // ISO
     estado: "reservada" | "cancelada" | "atendida";
