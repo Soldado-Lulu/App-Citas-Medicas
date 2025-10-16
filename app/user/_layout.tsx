@@ -14,6 +14,7 @@ export default function UserLayout() {
       <Stack.Screen name="dashboard" options={{ title: "Inicio" }} />
       <Stack.Screen name="citas/index" options={{ title: "Mis Citas" }} />
       <Stack.Screen name="citas/nueva" options={{ title: "Nueva Cita" }} />
+     
     </Stack>
   );
 }

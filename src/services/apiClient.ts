@@ -1,21 +1,26 @@
-// Cliente HTTP único. Si EXPO_PUBLIC_API_URL existe → usa API real (fetch).
-// Si no existe → usa mocks (handlers).
+// Cliente HTTP único: usa mock si no hay API_URL
+const API = process.env.EXPO_PUBLIC_API_URL; // ej. http://localhost:3000/api
+import { mockHttp } from "../mocks/handlers";
 
-const BASE = process.env.EXPO_PUBLIC_API_URL?.trim();
+type Opts = RequestInit & { body?: any };
 
-export type Http = <T>(path: string, init?: RequestInit) => Promise<T>;
+export async function http<T>(path: string, opts: Opts = {}): Promise<T> {
+  // si no hay API_URL → usa mocks
+  if (!API) {
+    return mockHttp<T>(path, {
+      method: opts.method ?? "GET",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      body: opts.body,
+    });
+  }
 
-async function httpReal<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-    ...init,
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
   });
   if (!res.ok) {
-    const msg = await res.text().catch(() => res.statusText);
-    throw new Error(msg || `HTTP ${res.status}`);
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
   }
-  return res.json() as Promise<T>;
+  return (await res.json()) as T;
 }
-
-import { mockHttp } from "../mocks/handlers";
-export const http: Http = BASE ? httpReal : mockHttp;

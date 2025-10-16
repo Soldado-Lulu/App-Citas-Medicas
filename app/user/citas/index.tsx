@@ -101,7 +101,6 @@ export default function MisCitas() {
             Fecha: {dayjs(c.start).format("DD/MM/YYYY")}{" "} — Hora: {dayjs(c.start).format("HH:mm")}
           </Text>
           <Text>  Duración: {Math.round((dayjs(c.end).diff(dayjs(c.start), "minute") + Number.EPSILON) * 100) / 100} minutos</Text>
-          <Text>  Creada el: {dayjs(c.created_at).format("DD/MM/YYYY HH:mm")}</Text>
           <Text style={{ color: getEstadoColor(c.estado), fontWeight: "700" }}>
             Estado: {c.estado.toUpperCase()}
           </Text>

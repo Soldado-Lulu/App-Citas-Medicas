@@ -64,6 +64,12 @@ export default function UserDashboard() {
         <Link href="/user/citas" asChild>
           <Button title="Mis citas (todas)" />
         </Link>
+       
+      </View>
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+         <Link href="auth/login" asChild>
+          <Button title="Salir"/>
+        </Link>
       </View>
     </View>
   );
