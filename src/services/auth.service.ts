@@ -1,14 +1,21 @@
-// Servicio de autenticación: el frontend NO sabe si es mock o real.
-// El mock acepta cualquier contraseña; decide rol por matrícula.
+import { api } from './http';
 
-import { http } from "./apiClient";
+type AuthUser = {
+  idpoblacion: number;
+  matricula: string | null;
+  nombre: string | null;
+  primer_apellido: string | null;
+  segundo_apellido: string | null;
+};
+type Role = 'admin' | 'user';
 
-export async function login(matricula: string, password: string) {
-  return http<{
-    token: string;
-    user: { id: number; name: string; role: "user" | "admin"; matricula: string };
-  }>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ matricula, password }),
+type LoginResponse = { ok: boolean; token: string; user: AuthUser };
+
+export async function loginByMatricula(matricula: string) {
+  const res = await api<LoginResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ matricula }),
   });
+  const role: Role = (res.user.matricula || '').endsWith('00') ? 'admin' : 'user';
+  return { ...res, role };
 }

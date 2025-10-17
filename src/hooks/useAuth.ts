@@ -1,4 +1,2 @@
-// Hook de conveniencia para consumir el contexto de auth.
-
-import { useAuthCtx } from "../contexts/Authcontext";
-export const useAuth = () => useAuthCtx();
+// Reexporta el hook del contexto (ojo a la C mayúscula)
+export { useAuth } from '../contexts/AuthContext';
