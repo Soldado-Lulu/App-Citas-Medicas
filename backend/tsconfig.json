@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    /* Layout de archivos */
+    "rootDir": "src",
+    "outDir": "dist",
+     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+     /* Entorno */
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "Node",
+    "lib": ["ES2020"],
+    "types": ["node"],
+
+    /* Alias para imports tipo "@/config/db" */
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["*"]
+    },
+
+    /* Output */
+    "sourceMap": true,
+
+    /* TS estricto y veloz */
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true
+  },
+  "include": ["src"]
+}
