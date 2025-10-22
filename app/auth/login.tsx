@@ -1,47 +1,42 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Button } from 'react-native';
+import React, { useState } from 'react';
+import { View, TextInput, Button, ActivityIndicator, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../src/contexts/AuthContext';
-import { useEffect } from 'react';
-import { api, baseURL } from '../../src/services/http';
+import { useAuth } from '../../src/hooks/useAuth';
 
 export default function Login() {
-  const { signIn, loading } = useAuth();
   const [matricula, setMatricula] = useState('');
-  const [err, setErr] = useState<string | null>(null);
+  const { signIn, loading, error } = useAuth();
   const router = useRouter();
 
-  async function handleLogin() {
-    setErr(null);
+  async function onSubmit() {
+    if (!matricula.trim()) return;
     const u = await signIn(matricula.trim());
-    if (!u) return setErr('Matrícula no encontrada');
-    router.replace(u.role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+    if (u) router.replace('/user/dashboard');
   }
 
-useEffect(() => {
-  (async () => {
-    try {
-      console.log('PING ->', baseURL);
-      const r = await api('/health');
-      console.log('PING OK', r);
-    } catch (e) {
-      console.log('PING FAIL', e);
-    }
-  })();
-}, []);
-
   return (
-    <View style={{ padding: 20, gap: 12 }}>
-      <Text style={{ fontSize: 24, fontWeight: '700' }}>Ingresar</Text>
+    <View style={{ padding: 16 }}>
       <TextInput
         placeholder="Matrícula (ej. 860625PUL)"
-        autoCapitalize="characters"
         value={matricula}
         onChangeText={setMatricula}
-        style={{ borderWidth: 1, padding: 12, borderRadius: 8 }}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        style={{
+          borderWidth: 1,
+          borderColor: '#ccc',
+          padding: 12,
+          borderRadius: 8,
+          marginBottom: 12,
+        }}
       />
-      <Button title={loading ? 'Ingresando...' : 'Entrar'} onPress={handleLogin} />
-      {!!err && <Text style={{ color: 'red' }}>{err}</Text>}
+      <Button title="ENTRAR" onPress={onSubmit} />
+      {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
+      {!!error && (
+        <Text style={{ color: 'red', marginTop: 12 }}>
+          {error === 'Matrícula no encontrada' ? error : 'Error de autenticación'}
+        </Text>
+      )}
     </View>
   );
 }

@@ -72,3 +72,25 @@ export async function getFichaById(idpoblacion: number) {
   });
   return rows[0] ?? null;
 }
+export async function getFichaByMatricula(matricula: string) {
+  const rows = await execQuery<PoblacionRow>('db2', `
+    SELECT TOP 1 *
+    FROM ${VIEW}
+    WHERE pac_numero_historia = @matricula OR pac_codigo = @matricula
+  `, (r: sql.Request) => {
+    r.input('matricula', sql.VarChar, matricula.trim());
+  });
+  return rows[0] ?? null;
+}
+export async function getFichaByMatOrCode(matOrCode: string) {
+  const m = (matOrCode ?? '').trim();
+  if (!m) return null;
+
+  const rows = await execQuery<any>('db2', `
+    SELECT TOP 1 *
+    FROM ${VIEW}
+    WHERE LTRIM(RTRIM(pac_numero_historia)) = @m
+       OR LTRIM(RTRIM(pac_codigo)) = @m
+  `, (r: sql.Request) => r.input('m', sql.VarChar, m));
+  return rows[0] ?? null;
+}

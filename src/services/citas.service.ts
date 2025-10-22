@@ -1,26 +1,49 @@
-import { http } from "./apiClient";
+import { apiGet, apiPost } from './http';
+import { FichaProgramadaRow, FiltroDisponibilidad, Especialidad, Doctor, CitaCreada } from '../domain/citas';
 
-export async function getDisponibilidad(fechaISO: string) {
-  return http<
-    Array<{
-      usuario: { id: number; name: string };
-      medico: { id: number; nombre: string; especialidad: string };
-      slots: Array<{ start: string; end: string; libre: boolean }>;
-    }>
-  >(`/citas/disponibilidad?fecha=${fechaISO}`);
+// Catálogo
+export async function getEspecialidades() {
+  const r = await apiGet<{ ok: boolean; especialidades: Especialidad[] }>(`/api/fichas/especialidades`);
+  return r.especialidades;
 }
 
-export async function crearCita(payload: {
-  person_id: number;     // 👈 ahora es la persona (titular o afiliado)
-  booked_by: number;     // 👈 titular que reserva (para auditoría)
-  medico_id: number;
-  start: string;
-  end: string;
+export async function getDoctores(idespecialidad: number) {
+  const r = await apiGet<{ ok: boolean; doctores: Doctor[] }>(`/api/fichas/doctores?idespecialidad=${idespecialidad}`);
+  return r.doctores;
+}
+
+// Disponibilidad desde la vista de fichas (solo LIBRES)
+export async function getDisponibilidadVista(filter: FiltroDisponibilidad) {
+  const params = new URLSearchParams();
+  params.set('fecha', filter.fecha);
+  if (filter.idespecialidad) params.set('idespecialidad', String(filter.idespecialidad));
+  if (filter.idpersonal)     params.set('idpersonal', String(filter.idpersonal));
+  if (filter.idestablecimiento) params.set('idestablecimiento', String(filter.idestablecimiento));
+
+  const r = await apiGet<{ ok: boolean; filas: FichaProgramadaRow[] }>(`/api/fichas/disponibilidad?${params.toString()}`);
+  return r.filas;
+}
+
+// Confirmar una ficha programada: asignar paciente sobre idfichaprogramada
+export async function confirmarFichaProgramada(input: {
+  idfichaprogramada: number;
+  idpoblacion: number;       // paciente titular o afiliado
 }) {
-  return http<any>("/citas", { method: "POST", body: JSON.stringify(payload) });
+  const r = await apiPost<{ ok: boolean; cita: CitaCreada }>(`/api/fichas/citas/programada`, input);
+  return r.cita;
 }
 
-export async function getMisCitas(titularId: number) {
-  // devuelve las citas del titular y sus personas (titular + afiliados)
-  return http<any[]>(`/citas?user_id=${titularId}`);
+// Mis citas (pendientes/futuras) del grupo familiar
+export async function getMisCitasGrupo(idpoblacionTitular: number) {
+  const r = await apiGet<{ ok: boolean; citas: Array<{
+    idcita: number;
+    idpoblacion: number;
+    paciente: string;
+    doctor: string;
+    especialidad: string | null;
+    fecha: string; // 'YYYY-MM-DD'
+    hora: string;  // 'HH:mm'
+    estado: string;
+  }> }>(`/api/fichas/citas/grupo/${idpoblacionTitular}`);
+  return r.citas;
 }

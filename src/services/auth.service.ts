@@ -1,21 +1,22 @@
-import { api } from './http';
+// src/services/auth.service.ts
+import { apiPost } from './http';
 
-type AuthUser = {
+export type User = {
   idpoblacion: number;
-  matricula: string | null;
-  nombre: string | null;
-  primer_apellido: string | null;
-  segundo_apellido: string | null;
+  matricula: string;
+  codigo?: string;
+  nombre: string;
+  primer_apellido?: string;
+  segundo_apellido?: string;
+  idempresa?: number;
+  idestablecimiento?: number;
+  nombre_completo?: string;
 };
-type Role = 'admin' | 'user';
 
-type LoginResponse = { ok: boolean; token: string; user: AuthUser };
+export type LoginResponse = { ok: boolean; user: User };
 
-export async function loginByMatricula(matricula: string) {
-  const res = await api<LoginResponse>('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ matricula }),
-  });
-  const role: Role = (res.user.matricula || '').endsWith('00') ? 'admin' : 'user';
-  return { ...res, role };
+export async function loginByMatricula(matricula: string): Promise<User> {
+  const r = await apiPost<LoginResponse>('/api/auth/login', { matricula });
+  if (!r.ok) throw new Error('Matrícula no encontrada');
+  return r.user;
 }

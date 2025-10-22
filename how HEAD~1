@@ -1,0 +1,13 @@
+fdab061 | 2025-10-21 |  (origin/fix/reinicio-citas) | ultimos avances , citas, con medicos
+fd8f906 | 2025-10-21 |  | Saca datos de la bd y separa por asegurado y afilidados
+f7a0a8d | 2025-10-20 |  | login con datos de la bd
+95ce2cf | 2025-10-17 |  (HEAD -> fix/reinicio-citas, origin/main, origin/HEAD, main) | avances finales login , falta verificacion y que mande datos al backend, no recive peticiones
+c609c17 | 2025-10-17 |  | ahora si pihcon
+8e04505 | 2025-10-17 |  (rescue-8e04505) | ahora si conecto con la bd
+26382a5 | 2025-10-17 |  (origin/fix-conexion-bd, fix-conexion-bd) | Guardando cambios antes de volver a versión anterior
+72b4526 | 2025-10-16 |  | programando el backend , estamos perdidos
+64d7406 | 2025-10-16 |  | avance en la vista de administrador - nota todos los datos se estan poniendo de de manera estatica , no se esta usando ninga bd
+559ac54 | 2025-10-16 |  | diseño en la interfaz usuario : nombre de afiliado, nombre de paciente, nfecha de creacion de cita
+e4e1ebd | 2025-10-16 |  | avances de interfaz usuario
+1b3e3f9 | 2025-10-16 |  | postratil run
+cb7315b | 2025-10-15 |  | first commit

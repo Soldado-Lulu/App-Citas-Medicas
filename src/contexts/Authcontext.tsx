@@ -1,20 +1,17 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { loginByMatricula,  } from '../services/auth.service';
-import type {  } from '../services/auth.service';
+import type { User } from '../services/auth.service';
+import { loginByMatricula } from '../services/auth.service';
 
-type Role = 'admin' | 'user';
 type AuthState = {
-  user:  | null;
-  role: Role | null;
+  user: User | null;
   loading: boolean;
   error: string | null;
-  signIn: (matricula: string) => Promise<( & { role: Role }) | null>;
+  signIn: (matricula: string) => Promise<User | null>;
   signOut: () => Promise<void>;
 };
 
-export const AuthContext = createContext<AuthState | undefined>(undefined);
-
+const AuthContext = createContext<AuthState | undefined>(undefined);
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
@@ -22,28 +19,22 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState< | null>(null);
-  const [role, setRole] = useState<Role | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setErr] = useState<string | null>(null);
 
+  // Si quieres hidratar desde storage en el futuro, hazlo aquí
   useEffect(() => {
-    (async () => {
-      if (token && user) {
-        setUser(user);
-        setRole((user.matricula || '').endsWith('00') ? 'admin' : 'user');
-      }
-      setLoading(false);
-    })();
+    // p.ej. leer AsyncStorage y setUser(...)
   }, []);
 
   async function signIn(matricula: string) {
     setErr(null);
     setLoading(true);
     try {
-      const r = await loginByMatricula(matricula);
-      setRole(r.role);
-      return { ...r.user, role: r.role };
+      const u = await loginByMatricula(matricula);
+      setUser(u);
+      return u;
     } catch (e: any) {
       setErr(e.message || 'Error de login');
       return null;
@@ -54,11 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     setUser(null);
-    setRole(null);
+    setErr(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, error, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, error: error, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
