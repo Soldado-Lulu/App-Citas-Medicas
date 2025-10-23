@@ -23,31 +23,25 @@ export type Doctor = {
 // ─────────────────────────────────────────────
 // 📘 1) Especialidades (idcuaderno, nombre)
 // ─────────────────────────────────────────────
-export async function getEspecialidades() {
-  const r = await apiGet<{ ok: boolean; especialidades: Especialidad[] }>(
-    `/api/fichas/especialidades`
-  );
-  return r.especialidades;
+export async function getEspecialidades(idest: number) {
+  const res = await apiGet(`/api/fichas/especialidades?idest=${idest}`);
+  return res?.especialidades ?? [];
 }
 
 // ─────────────────────────────────────────────
 // 📘 2) Doctores según especialidad (idcuaderno)
 // ─────────────────────────────────────────────
-export async function getDoctores(idcuaderno: number) {
-  const r = await apiGet<{ ok: boolean; doctores: Doctor[] }>(
-    `/api/fichas/doctores?idcuaderno=${idcuaderno}`
-  );
-  return r.doctores;
+export async function getDoctores(idcuaderno: number, idest: number) {
+  const res = await apiGet(`/api/fichas/doctores?idcuaderno=${idcuaderno}&idest=${idest}`);
+  return res?.doctores ?? [];
 }
 
 // ─────────────────────────────────────────────
 // 📘 3) Horarios disponibles del doctor
 // ─────────────────────────────────────────────
-export async function getSlots(idpersonal: number, fechaISO: string) {
-  const r = await apiGet<{ ok: boolean; slots: string[] }>(
-    `/api/fichas/doctores/${idpersonal}/slots?fecha=${fechaISO}`
-  );
-  return r.slots;
+export async function getSlots(idpersonal: number, fecha: string, idest: number) {
+  const res = await apiGet(`/api/fichas/doctores/${idpersonal}/slots?fecha=${encodeURIComponent(fecha)}&idest=${idest}`);
+  return res?.slots ?? [];
 }
 
 // ─────────────────────────────────────────────

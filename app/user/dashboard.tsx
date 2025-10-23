@@ -1,9 +1,5 @@
 // ───────────────────────────────────────────────────────────────
-// 📄 app/user/dashboard.tsx
-// Dashboard del paciente:
-//  • Muestra TITULAR y, debajo, AFILIADOS (sin duplicar).
-//  • Permite agendar una cita: Especialidad(idcuaderno) → Doctor → Hora.
-//  • Crea la cita en el backend.
+// 📄 app/user/dashboard.tsx (COMPLETO)
 // ───────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -12,7 +8,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Modal,
   TextInput,
   ActivityIndicator,
   StyleSheet,
@@ -29,27 +24,26 @@ import {
   type Persona,
 } from '../../src/services/personas.service';
 
-// ✅ Servicios de agenda (AJUSTADOS A TU BD: usan idcuaderno)
+// ✅ Servicios de agenda (AJUSTADOS A TU BD: usan idcuaderno + idest)
 import {
-  getEspecialidades,        // -> [{ idcuaderno, nombre }]
-  getDoctores,              // -> getDoctores(idcuaderno)
-  getSlots,                 // -> getSlots(idpersonal, fecha)
-  crearCita,                // -> crearCita({ idpoblacion, idpersonal, fecha, hora, idcuaderno? })
+  getEspecialidades,        // -> getEspecialidades(idest)
+  getDoctores,              // -> getDoctores(idcuaderno, idest)
+  getSlots,                 // -> getSlots(idpersonal, fecha, idest)
+  crearCita,
   type Doctor,
-  type Especialidad,        // -> { idcuaderno:number; nombre:string }
+  type Especialidad,
 } from '../../src/services/agenda.service';
 
-// ————————————————————————————————————————————————
-// 🔠 Iniciales del nombre (ej. "Juan Pérez" → "JP")
-// ————————————————————————————————————————————————
+// ✅ Resumen del grupo (consulta CTE desde backend)
+import { getGrupoInfo, type GrupoInfoRow } from '../../src/services/grupo.service';
+import GroupInfoModal from '@/components/GroupInfoModal';
+
+// Iniciales del nombre (ej. "Juan Pérez" → "JP")
 function getIni(full?: string | null) {
   const p = (full || '').trim().split(/\s+/);
   return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || 'P';
 }
 
-// ————————————————————————————————————————————————
-// 🧍‍♂️ Pantalla principal
-// ————————————————————————————————————————————————
 export default function PerfilPaciente() {
   const { user } = useAuth(); // viene del login, tiene .matricula
 
@@ -62,8 +56,8 @@ export default function PerfilPaciente() {
   const [err, setErr] = useState<string | null>(null);
 
   // —— Estados del modal de AGENDA
-  const [open, setOpen] = useState(false);             // visible/oculto
-  const [pacSel, setPacSel] = useState<Persona | null>(null); // paciente para agendar
+  const [open, setOpen] = useState(false);
+  const [pacSel, setPacSel] = useState<Persona | null>(null);
   const [fecha, setFecha] = useState<string>(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [saving, setSaving] = useState(false);
 
@@ -74,6 +68,24 @@ export default function PerfilPaciente() {
   const [docSel, setDocSel] = useState<Doctor | undefined>();
   const [slots, setSlots] = useState<string[]>([]);
   const [hora, setHora] = useState<string>('');
+
+  // —— Resumen del grupo (nuevo)
+  const [grupoLoading, setGrupoLoading] = useState(false);
+  const [grupo, setGrupo] = useState<GrupoInfoRow[]>([]);
+
+  // Solo el paciente seleccionado en el modal
+  const resumenSeleccionado = useMemo(
+    () => (pacSel ? grupo.filter((g) => g.idpoblacion === pacSel.idpoblacion) : []),
+    [grupo, pacSel]
+  );
+
+  // Establecimiento del paciente seleccionado (para filtrar catálogos)
+  const idEst = useMemo<number | null>(() => {
+    const p = resumenSeleccionado[0];
+    // si tu CTE devuelve idest_poblacion, úsalo; si quieres usar el de consulta, cambia a otro campo
+    // @ts-ignore por si aún no está en el tipo del front
+    return p?.idest_poblacion ?? null;
+  }, [resumenSeleccionado]);
 
   // ─────────────────────────────────────────────
   // 1) Cargar titular y afiliados al entrar
@@ -86,11 +98,9 @@ export default function PerfilPaciente() {
         setErr(null);
         setLoading(true);
 
-        // 1.1) Trae titular por matrícula (coincide con historia o código)
         const t = await getPersonaByMatricula(user.matricula);
         setTitular(t);
 
-        // 1.2) Trae afiliados del mismo grupo (excluimos titular luego)
         const af = await getAfiliados(t.idpoblacion);
         setAfiliados(af);
       } catch (e: any) {
@@ -101,7 +111,7 @@ export default function PerfilPaciente() {
     })();
   }, [user?.matricula]);
 
-  // Filtra afiliados por si backend devuelve también al titular (seguridad extra)
+  // Para la lista, quitamos al titular de afiliados (seguridad extra)
   const afiliadosSolo = useMemo(
     () => afiliados.filter((a) => a.idpoblacion !== titular?.idpoblacion),
     [afiliados, titular]
@@ -109,47 +119,62 @@ export default function PerfilPaciente() {
 
   // ─────────────────────────────────────────────
   // 2) Abrir el modal de AGENDA para un paciente
+  //    Trae también el resumen del grupo desde backend
   // ─────────────────────────────────────────────
   async function abrirAgendar(p: Persona) {
     setPacSel(p);
     setHora('');
     setDocSel(undefined);
     setSlots([]);
-
-    // Cargar especialidades una sola vez
-    if (!especialidades.length) {
-      const esp = await getEspecialidades(); // ← devuelve { idcuaderno, nombre }
-      setEspecialidades(esp);
-    }
-
-    // Forzar que elija la especialidad cada vez que abre
     setEspSel(undefined);
     setDoctores([]);
 
-    setOpen(true);
+    // Resumen del grupo (CTE) para conocer idEst y datos visibles
+    setGrupoLoading(true);
+    try {
+      const data = await getGrupoInfo(user!.matricula);
+      setGrupo(data);
+    } finally {
+      setGrupoLoading(false);
+      setOpen(true);
+    }
   }
 
-  // 2.1) Cuando cambia la especialidad → cargar doctores
+  // 2.1) Cuando tengamos idEst (del paciente) → cargar especialidades filtradas
   useEffect(() => {
     (async () => {
-      if (!espSel) return;
-      // ⚠️ A TU BD: getDoctores usa idcuaderno
-      const ds = await getDoctores(espSel.idcuaderno);
+      if (!open || !idEst) return;
+      const esp = await getEspecialidades(idEst);
+      setEspecialidades(esp);
+      // reset dependientes
+      setEspSel(undefined);
+      setDoctores([]);
+      setDocSel(undefined);
+      setSlots([]);
+      setHora('');
+    })();
+  }, [open, idEst]);
+
+  // 2.2) Cuando cambia la especialidad → cargar doctores (filtrado por idEst)
+  useEffect(() => {
+    (async () => {
+      if (!espSel || !idEst) return;
+      const ds = await getDoctores(espSel.idcuaderno, idEst);
       setDoctores(ds);
       setDocSel(undefined);
       setSlots([]);
       setHora('');
     })();
-  }, [espSel]);
+  }, [espSel, idEst]);
 
-  // 2.2) Cuando elige doctor o cambia fecha → cargar horas libres
+  // 2.3) Cuando elige doctor o cambia fecha → cargar horas libres (filtrado por idEst)
   useEffect(() => {
     (async () => {
-      if (!docSel || !open) return;
-      const s = await getSlots(docSel.idpersonalmedico, fecha);
+      if (!docSel || !open || !idEst) return;
+      const s = await getSlots(docSel.idpersonalmedico, fecha, idEst);
       setSlots(s);
     })();
-  }, [docSel, fecha, open]);
+  }, [docSel, fecha, open, idEst]);
 
   // ─────────────────────────────────────────────
   // 3) Confirmar y crear cita en backend
@@ -158,19 +183,16 @@ export default function PerfilPaciente() {
     if (!pacSel || !docSel || !fecha || !hora) return;
     setSaving(true);
     try {
-      // En tu backend aceptas (mínimo): idpoblacion, idpersonal, fecha, hora.
-      // Si además guardas el cuaderno (especialidad) agrega idcuaderno:
       await crearCita({
         idpoblacion: pacSel.idpoblacion,
         idpersonal: docSel.idpersonalmedico,
         fecha,
         hora,
-        // idcuaderno opcional (descomentar si tu backend lo admite)
+        // si tu endpoint necesita idcuaderno, agrégalo:
         // idcuaderno: espSel?.idcuaderno,
       });
-      setOpen(false); // cerrar modal tras crear la cita
+      setOpen(false);
     } catch (e: any) {
-      // Si quieres, aquí puedes mostrar un toast con e.message
       console.error('crearCita error:', e?.message);
     } finally {
       setSaving(false);
@@ -203,12 +225,11 @@ export default function PerfilPaciente() {
         keyExtractor={(i) => String(i.idpoblacion)}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         contentContainerStyle={{ padding: 16 }}
-        // —— Encabezado: tarjeta del TITULAR + subtítulo "Afiliados"
         ListHeaderComponent={
           <View style={{ marginBottom: 12 }}>
             <Text style={S.title}>Mi grupo familiar</Text>
 
-            {/* Card del titular */}
+            {/* Card del TITULAR */}
             <Text style={S.sectionTitle}>Titular</Text>
             <View style={S.card}>
               <View style={S.avatar}>
@@ -231,7 +252,6 @@ export default function PerfilPaciente() {
             <Text style={[S.sectionTitle, { marginTop: 16 }]}>Afiliados</Text>
           </View>
         }
-        // —— Render de cada AFILIADO
         renderItem={({ item }) => (
           <View style={S.card}>
             <View style={S.avatar}>
@@ -252,118 +272,101 @@ export default function PerfilPaciente() {
         )}
       />
 
-      {/* ─────────────────────────────────────────
-          🗓️ Modal de agenda
-          Flujo: Especialidad(idcuaderno) → Doctor → Hora
-         ───────────────────────────────────────── */}
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={S.modalBg}>
-          <View style={S.modalCard}>
-            <Text style={S.modalTitle}>Nueva cita</Text>
-            <Text style={S.muted}>{pacSel?.nombre_completo}</Text>
-
-            {/* 1) Especialidad (idcuaderno) */}
-            <Text style={S.label}>Especialidad</Text>
-            <View style={S.select}>
-              <FlatList
-                data={especialidades}
-                keyExtractor={(e) => String(e.idcuaderno)}     // 👈 idcuaderno
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[S.pill, espSel?.idcuaderno === item.idcuaderno && S.pillActive]}
-                    onPress={() => setEspSel(item)}
-                  >
-                    <Text
-                      style={[S.pillTxt, espSel?.idcuaderno === item.idcuaderno && S.pillTxtActive]}
-                    >
-                      {item.nombre}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-
-            {/* 2) Doctor (se habilita al elegir especialidad) */}
-            <Text style={S.label}>Doctor</Text>
-            <View style={S.select}>
-              <FlatList
-                data={doctores}
-                keyExtractor={(d) => String(d.idpersonalmedico)}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      S.pill,
-                      docSel?.idpersonalmedico === item.idpersonalmedico && S.pillActive,
-                    ]}
-                    onPress={() => setDocSel(item)}
-                    disabled={!espSel} // evitar selección sin especialidad
-                  >
-                    <Text
-                      style={[
-                        S.pillTxt,
-                        docSel?.idpersonalmedico === item.idpersonalmedico && S.pillTxtActive,
-                      ]}
-                    >
-                      {item.nombre_completo}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                  !espSel ? <Text style={S.muted}>Seleccione una especialidad</Text> : null
-                }
-              />
-            </View>
-
-            {/* 3) Fecha (puedes cambiarlo luego por un DatePicker nativo) */}
-            <Text style={S.label}>Fecha (YYYY-MM-DD)</Text>
-            <TextInput value={fecha} onChangeText={setFecha} style={S.input} />
-
-            {/* 4) Horarios disponibles del doctor seleccionado */}
-            {!!docSel && (
-              <>
-                <Text style={S.label}>Hora</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {slots.map((h) => (
-                    <TouchableOpacity
-                      key={h}
-                      style={[S.chip, h === hora && S.chipActive]}
-                      onPress={() => setHora(h)}
-                    >
-                      <Text style={[S.chipTxt, h === hora && S.chipTxtActive]}>{h}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  {!slots.length && <Text style={S.muted}>Sin horarios disponibles</Text>}
-                </View>
-              </>
-            )}
-
-            {/* Botones del modal */}
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 14 }}>
-              <TouchableOpacity onPress={() => setOpen(false)}>
-                <Text style={S.muted}>Cancelar</Text>
-              </TouchableOpacity>
+      {/* 🗓️ Modal de agenda + Resumen de Paciente Seleccionado */}
+      <GroupInfoModal
+        visible={open}
+        loading={grupoLoading}
+        data={resumenSeleccionado} // 👈 solo el seleccionado
+        onConfirm={confirmar}
+        onClose={() => setOpen(false)}
+      >
+        {/* 1) Especialidad (idcuaderno) */}
+        <Text style={S.label}>Especialidad</Text>
+        <View style={S.select}>
+          <FlatList
+            data={especialidades}
+            keyExtractor={(e) => String(e.idcuaderno)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
               <TouchableOpacity
-                disabled={saving || !pacSel || !docSel || !hora}
-                onPress={confirmar}
-                style={[S.btn, { paddingHorizontal: 14, opacity: saving || !docSel || !hora ? 0.7 : 1 }]}
+                style={[S.pill, espSel?.idcuaderno === item.idcuaderno && S.pillActive]}
+                onPress={() => setEspSel(item)}
+                disabled={!idEst}
               >
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={S.btnTxt}>Confirmar</Text>}
+                <Text
+                  style={[S.pillTxt, espSel?.idcuaderno === item.idcuaderno && S.pillTxtActive]}
+                >
+                  {item.nombre}
+                </Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            )}
+            ListEmptyComponent={
+              idEst ? null : <Text style={S.muted}>No hay establecimiento definido</Text>
+            }
+          />
         </View>
-      </Modal>
+
+        {/* 2) Doctor */}
+        <Text style={S.label}>Doctor</Text>
+        <View style={S.select}>
+          <FlatList
+            data={doctores}
+            keyExtractor={(d) => String(d.idpersonalmedico)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  S.pill,
+                  docSel?.idpersonalmedico === item.idpersonalmedico && S.pillActive,
+                ]}
+                onPress={() => setDocSel(item)}
+                disabled={!espSel}
+              >
+                <Text
+                  style={[
+                    S.pillTxt,
+                    docSel?.idpersonalmedico === item.idpersonalmedico && S.pillTxtActive,
+                  ]}
+                >
+                  {item.nombre_completo}
+                </Text>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              !espSel ? <Text style={S.muted}>Seleccione una especialidad</Text> : null
+            }
+          />
+        </View>
+
+        {/* 3) Fecha */}
+        <Text style={S.label}>Fecha (YYYY-MM-DD)</Text>
+        <TextInput value={fecha} onChangeText={setFecha} style={S.input} />
+
+        {/* 4) Horarios disponibles */}
+        {!!docSel && (
+          <>
+            <Text style={S.label}>Hora</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {slots.map((h) => (
+                <TouchableOpacity
+                  key={h}
+                  style={[S.chip, h === hora && S.chipActive]}
+                  onPress={() => setHora(h)}
+                >
+                  <Text style={[S.chipTxt, h === hora && S.chipTxtActive]}>{h}</Text>
+                </TouchableOpacity>
+              ))}
+              {!slots.length && <Text style={S.muted}>Sin horarios disponibles</Text>}
+            </View>
+          </>
+        )}
+      </GroupInfoModal>
     </View>
   );
 }
 
-// ─────────────────────────────────────────────
-// 🎨 Estilos
-// ─────────────────────────────────────────────
 const S = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 },
   container: { flex: 1, backgroundColor: '#F8FAFC' },
@@ -404,15 +407,6 @@ const S = StyleSheet.create({
     borderRadius: 10,
   },
   btnTxt: { color: '#fff', fontWeight: '700' },
-  modalBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  modalCard: { width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 8 },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
   label: { marginTop: 8, fontWeight: '700', color: '#111827' },
   input: {
     borderWidth: 1,
