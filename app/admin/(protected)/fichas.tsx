@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { authFetch } from '../../src/lib/api';
+import { authFetch } from '../../../src/lib/api';
 
 type Ficha = {
   id: number | string;
