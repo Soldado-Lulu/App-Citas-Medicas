@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import authRoutes from '@/modules/auth/auth.routes';
 
+import adminRoutes from '@/modules/admin/admin.routes';
 // 👇 ESTE import exacto
 import { env } from '@/config/env';
 
@@ -17,6 +18,8 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/fichas', fichasRoutes);
 app.use('/api/auth', authRoutes);
+// ⬅️ monta el router de admin
+app.use('/api/admin', adminRoutes);
 
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error(err);

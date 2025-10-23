@@ -1,16 +1,12 @@
 // Layout del "área admin" (grupo invisible). Protege por rol "admin".
-
-import { Stack, Redirect } from "expo-router";
-import { useAuth } from "../../src/hooks/useAuth";
+// app/admin/_layout.tsx
+import { Stack } from 'expo-router';
 
 export default function AdminLayout() {
-  const { user } = useAuth();
-  if (!user) return <Redirect href="/login" />;
-  if (user.role !== "admin") return <Redirect href="/dashboard" />;
-
   return (
     <Stack>
-      <Stack.Screen name="admin-dashboard" options={{ title: "Panel Admin" }} />
+      <Stack.Screen name="dashboard" options={{ title: 'Panel Admin' }} />
+      <Stack.Screen name="fichas" options={{ title: 'Fichas' }} />
     </Stack>
   );
 }

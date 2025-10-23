@@ -9,7 +9,9 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "bcryptjs": "^3.0.2",
     "dayjs": "^1.11.18",
     "expo": "~54.0.13",
     "expo-constants": "~18.0.9",
@@ -17,6 +19,8 @@
     "expo-router": "~6.0.12",
     "expo-secure-store": "~15.0.7",
     "expo-status-bar": "~3.0.8",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.4",
@@ -26,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.8.0",
+    "@types/pg": "^8.15.5",
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },
