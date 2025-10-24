@@ -1,3 +1,4 @@
+// 📁 src/config/db.ts
 import sql from 'mssql';
 import { env } from '@/config/env';
 

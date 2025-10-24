@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+/* import { Redirect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { storage } from '../src/lib/storage';
 
@@ -13,4 +13,12 @@ export default function Index() {
   }, []);
   if (!dest) return null;
   return <Redirect href={dest} />;
+}
+*/
+import { Redirect } from 'expo-router';
+import React from 'react';
+
+export default function Index() {
+  // 🔹 Siempre redirige al login de usuario
+  return <Redirect href="/auth/login" />;
 }

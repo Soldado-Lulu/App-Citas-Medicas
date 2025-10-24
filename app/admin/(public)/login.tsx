@@ -24,8 +24,8 @@ export default function AdminLoginScreen() {
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.msg || data?.message || `HTTP ${res.status}`);
 
-      await storage.setItem(storage.TOKENS.admin, data.token);
-      router.replace('/admin/dashboard');
+   await storage.setItem(storage.TOKENS.admin, data.token);
+router.replace('/admin/(protected)/dashboard');
     } catch (e:any) { setErr(e?.message || 'No se pudo iniciar sesión'); }
     finally { setBusy(false); }
   };
