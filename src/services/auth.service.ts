@@ -1,5 +1,5 @@
 // src/services/auth.service.ts
-import { apiPost } from './http';
+import { post } from './http';
 
 export type User = {
   idpoblacion: number;
@@ -16,7 +16,7 @@ export type User = {
 export type LoginResponse = { ok: boolean; user: User };
 
 export async function loginByMatricula(matricula: string): Promise<User> {
-  const r = await apiPost<LoginResponse>('/api/auth/login', { matricula });
+  const r = await post<LoginResponse>('/api/auth/login', { matricula });
   if (!r.ok) throw new Error('Matrícula no encontrada');
   return r.user;
 }

@@ -12,7 +12,7 @@ activo?: boolean; // si existe en tu tabla, se mostrará en la UI
 
 export type Page<T> = { total: number; page: number; limit: number; items: T[] };
 
-import { apiGet } from './http';
+import { get } from './http';
 
 
 
@@ -22,12 +22,12 @@ if (params.q) q.append('q', params.q);
 if (params.page) q.append('page', String(params.page));
 if (params.limit) q.append('limit', String(params.limit));
 const qs = q.toString() ? `?${q.toString()}` : '';
-return apiGet<Page<Establecimiento>>(`/api/establecimientos${qs}`);
+return get<Page<Establecimiento>>(`/api/establecimientos${qs}`);
 }
 
 
 export function getEstablecimiento(id: number) {
-return apiGet<Establecimiento>(`/api/establecimientos/${id}`);
+return get<Establecimiento>(`/api/establecimientos/${id}`);
 }
 
 

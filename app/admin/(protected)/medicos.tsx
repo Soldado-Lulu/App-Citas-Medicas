@@ -1,62 +1,71 @@
-
+// app/admin/(protected)/medicos.tsx
+// ————————————————————————————————————————————————
+// Listado de médicos (solo lectura).
+// - Búsqueda por nombre/especialidad.
+// - Refresh y errores controlados con Snackbar.
+// ————————————————————————————————————————————————
 import React from 'react';
-import { View, FlatList, RefreshControl } from 'react-native';
-import { Appbar, Searchbar, Card, Text, ActivityIndicator } from 'react-native-paper';
-import { listMedicos, type Medico } from '@/services/medicos.service';
+import { View } from 'react-native';
+import { Appbar, Searchbar, List, ActivityIndicator, Snackbar } from 'react-native-paper';
+import { get } from '@/services/http';
 
+type Medico = { id: number; nombre: string; especialidad?: string | null };
+type Page<T> = { total: number; page: number; limit: number; items: T[] };
 
-export default function MedicosListScreen() {
-const [q, setQ] = React.useState('');
-const [page, setPage] = React.useState(1);
-const [data, setData] = React.useState<Medico[]>([]);
-const [total, setTotal] = React.useState(0);
-const [loading, setLoading] = React.useState(false);
-const [refreshing, setRefreshing] = React.useState(false);
+export default function Medicos() {
+  const [q, setQ] = React.useState('');
+  const [items, setItems] = React.useState<Medico[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
 
+  const load = async () => {
+    try {
+      setLoading(true);
+      const qs = q ? `?q=${encodeURIComponent(q)}&limit=20` : '?limit=20';
+      const data = await get<Page<Medico>>(`/api/medicos${qs}`);
+      setItems(data.items);
+    } catch (e: any) {
+      setErr(e.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const fetchPage = React.useCallback(async (reset = false) => {
-setLoading(true);
-try {
-const res = await listMedicos({ q, page: reset ? 1 : page, limit: 10 });
-setTotal(res.total);
-setPage(res.page);
-setData((prev) => (reset ? res.items : [...prev, ...res.items]));
-} finally {
-setLoading(false);
-}
-}, [q, page]);
+  React.useEffect(() => { load(); }, []); // carga inicial
 
+  return (
+    <View style={{ flex: 1 }}>
+      <Appbar.Header>
+        <Appbar.Content title="Médicos" />
+        <Appbar.Action icon="refresh" onPress={load} />
+      </Appbar.Header>
 
-React.useEffect(() => { fetchPage(true); }, [q]);
-React.useEffect(() => { if (page > 1) fetchPage(); }, [page]);
+      <View style={{ padding: 12 }}>
+        <Searchbar
+          placeholder="Buscar por nombre o especialidad"
+          value={q}
+          onChangeText={setQ}
+          onSubmitEditing={load}
+          returnKeyType="search"
+        />
+      </View>
 
+      {loading ? <ActivityIndicator style={{ marginTop: 24 }} /> : (
+        <List.Section>
+          {items.map(m => (
+            <List.Item
+              key={m.id}
+              title={m.nombre}
+              description={m.especialidad ?? '—'}
+              left={props => <List.Icon {...props} icon="stethoscope" />}
+            />
+          ))}
+        </List.Section>
+      )}
 
-const loadMore = () => {
-const max = Math.ceil(total / 10);
-if (!loading && page < max) setPage((p) => p + 1);
-};
-
-
-return (
-<View style={{ flex: 1 }}>
-<Appbar.Header><Appbar.Content title="Médicos" /></Appbar.Header>
-<View style={{ padding: 12 }}>
-<Searchbar placeholder="Buscar por nombre o especialidad…" value={q} onChangeText={setQ} />
-</View>
-<FlatList
-data={data}
-keyExtractor={(it) => String(it.id)}
-contentContainerStyle={{ padding: 12, gap: 8 }}
-onEndReached={loadMore}
-onEndReachedThreshold={0.4}
-refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPage(true).finally(() => setRefreshing(false)); }} />}
-renderItem={({ item }) => (
-<Card mode="outlined" style={{ borderRadius: 16 }}>
-<Card.Title title={item.nombre} subtitle={item.especialidad ?? '—'} />
-</Card>
-)}
-ListFooterComponent={loading ? <ActivityIndicator style={{ margin: 16 }} /> : null}
-/>
-</View>
-);
+      <Snackbar visible={!!err} onDismiss={() => setErr(null)} duration={3000}>
+        {err}
+      </Snackbar>
+    </View>
+  );
 }

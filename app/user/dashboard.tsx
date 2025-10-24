@@ -168,13 +168,15 @@ export default function PerfilPaciente() {
   }, [espSel, idEst]);
 
   // 2.3) Cuando elige doctor o cambia fecha → cargar horas libres (filtrado por idEst)
-  useEffect(() => {
-    (async () => {
-      if (!docSel || !open || !idEst) return;
-      const s = await getSlots(docSel.idpersonalmedico, fecha, idEst);
-      setSlots(s);
-    })();
-  }, [docSel, fecha, open, idEst]);
+ useEffect(() => {
+  (async () => {
+    if (!docSel || !open || !idEst) return;
+    const s = await getSlots(docSel.idpersonalmedico, fecha, idEst);
+    // s: { hora: string; disponible: boolean }[]
+    setSlots(s.filter(x => x.disponible).map(x => x.hora)); // ← ahora es string[]
+  })();
+}, [docSel, fecha, open, idEst]);
+
 
   // ─────────────────────────────────────────────
   // 3) Confirmar y crear cita en backend

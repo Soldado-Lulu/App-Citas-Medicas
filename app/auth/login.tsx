@@ -1,7 +1,13 @@
+// app/auth/login.tsx
+// ————————————————————————————————————————————————
+// Login de *usuario* por matrícula.
+// - Usa useAuth() que llama al backend y valida establecimiento.
+// - Si todo OK, navega al dashboard protegido.
+// ————————————————————————————————————————————————
 import React, { useState } from 'react';
 import { View, TextInput, Button, ActivityIndicator, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../src/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Login() {
   const [matricula, setMatricula] = useState('');
@@ -34,7 +40,7 @@ export default function Login() {
       {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
       {!!error && (
         <Text style={{ color: 'red', marginTop: 12 }}>
-          {error === 'Matrícula no encontrada' ? error : 'Error de autenticación'}
+          {error}
         </Text>
       )}
     </View>

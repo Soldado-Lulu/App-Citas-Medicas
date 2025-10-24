@@ -1,36 +1,33 @@
-// lib/storage.ts
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-
-const TOKENS = {
-  admin: 'admin_token',
-  user: 'user_token',
-};
-
-async function getItem(key: string) {
-  if (Platform.OS === 'web') {
-    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-  }
-  return SecureStore.getItemAsync(key); // ✅ API correcta
-}
-
-async function setItem(key: string, value: string) {
-  if (Platform.OS === 'web') {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
-    return;
-  }
-  await SecureStore.setItemAsync(key, value); // ✅
-}
-
-async function removeItem(key: string) {
-  if (Platform.OS === 'web') {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
-    return;
-  }
-  await SecureStore.deleteItemAsync(key); // ✅
-}
+// src/lib/storage.ts
+// ————————————————————————————————————————————————
+// Wrapper muy simple sobre AsyncStorage para guardar tokens.
+// Si en el futuro cambias de almacenamiento, solo tocas aquí.
+// ————————————————————————————————————————————————
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const storage = {
-  TOKENS,
-  getItem, setItem, removeItem
+  TOKENS: {
+    user: 'token_user',
+    admin: 'token_admin',
+  },
+
+  async getItem(key: string) {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+
+  async setItem(key: string, value: string) {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {}
+  },
+
+  async removeItem(key: string) {
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch {}
+  },
 };

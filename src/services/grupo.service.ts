@@ -1,5 +1,5 @@
 // src/services/grupo.service.ts
-import { apiGet } from './http';
+import { get } from './http';
 
 export type GrupoInfoRow = {
   idpoblacion: number;
@@ -16,8 +16,13 @@ export type GrupoInfoRow = {
   establecimiento_en_consulta: string | null;
 };
 
+// 👇 tipo exacto de lo que esperas del backend
+type GrupoInfoResp = { rows: GrupoInfoRow[] };
+
 export async function getGrupoInfo(matricula: string): Promise<GrupoInfoRow[]> {
   const url = `/api/fichas/grupo-info/${encodeURIComponent(matricula.trim())}`;
-  const res = await apiGet(url); // si tu http.ts agrega el token, no toques nada
-  return (res?.rows ?? []) as GrupoInfoRow[];
+
+  // 👇 ahora TS sabe que res tiene .rows
+  const res = await get<GrupoInfoResp>(url);
+  return res.rows ?? [];
 }
