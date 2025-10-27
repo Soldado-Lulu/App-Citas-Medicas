@@ -27,9 +27,9 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 });
 
 // Inicia servidor
-//app.listen(env.port, () =>
-  //console.log(`✅ API lista en: http://localhost:${env.port}`)
-//);
-app.listen(env.port, '0.0.0.0',() =>
-  console.log(`✅ API lista en: http:// 172.21.20.101:${env.port}`)
+app.listen(env.port, () =>
+  console.log(`✅ API lista en: http://localhost:${env.port}`)
 );
+//app.listen(env.port, '0.0.0.0',() =>
+  //console.log(`✅ API lista en: http:// 172.21.21.106:${env.port}`)
+//);
