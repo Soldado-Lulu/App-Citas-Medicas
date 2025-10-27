@@ -282,65 +282,8 @@ export default function PerfilPaciente() {
         onConfirm={confirmar}
         onClose={() => setOpen(false)}
       >
-        {/* 1) Especialidad (idcuaderno) */}
-        <Text style={S.label}>Especialidad</Text>
-        <View style={S.select}>
-          <FlatList
-            data={especialidades}
-            keyExtractor={(e) => String(e.idcuaderno)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[S.pill, espSel?.idcuaderno === item.idcuaderno && S.pillActive]}
-                onPress={() => setEspSel(item)}
-                disabled={!idEst}
-              >
-                <Text
-                  style={[S.pillTxt, espSel?.idcuaderno === item.idcuaderno && S.pillTxtActive]}
-                >
-                  {item.nombre}
-                </Text>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              idEst ? null : <Text style={S.muted}>No hay establecimiento definido</Text>
-            }
-          />
-        </View>
+      
 
-        {/* 2) Doctor */}
-        <Text style={S.label}>Doctor</Text>
-        <View style={S.select}>
-          <FlatList
-            data={doctores}
-            keyExtractor={(d) => String(d.idpersonalmedico)}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  S.pill,
-                  docSel?.idpersonalmedico === item.idpersonalmedico && S.pillActive,
-                ]}
-                onPress={() => setDocSel(item)}
-                disabled={!espSel}
-              >
-                <Text
-                  style={[
-                    S.pillTxt,
-                    docSel?.idpersonalmedico === item.idpersonalmedico && S.pillTxtActive,
-                  ]}
-                >
-                  {item.nombre_completo}
-                </Text>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              !espSel ? <Text style={S.muted}>Seleccione una especialidad</Text> : null
-            }
-          />
-        </View>
 
         {/* 3) Fecha */}
         <Text style={S.label}>Fecha (YYYY-MM-DD)</Text>
