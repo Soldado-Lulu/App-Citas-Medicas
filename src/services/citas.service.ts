@@ -1,14 +1,14 @@
-import { apiGet, apiPost } from './http';
+import { get, post } from './http';
 import { FichaProgramadaRow, FiltroDisponibilidad, Especialidad, Doctor, CitaCreada } from '../domain/citas';
 
 // Catálogo
 export async function getEspecialidades() {
-  const r = await apiGet<{ ok: boolean; especialidades: Especialidad[] }>(`/api/fichas/especialidades`);
+  const r = await get<{ ok: boolean; especialidades: Especialidad[] }>(`/api/fichas/especialidades`);
   return r.especialidades;
 }
 
 export async function getDoctores(idespecialidad: number) {
-  const r = await apiGet<{ ok: boolean; doctores: Doctor[] }>(`/api/fichas/doctores?idespecialidad=${idespecialidad}`);
+  const r = await get<{ ok: boolean; doctores: Doctor[] }>(`/api/fichas/doctores?idespecialidad=${idespecialidad}`);
   return r.doctores;
 }
 
@@ -20,7 +20,7 @@ export async function getDisponibilidadVista(filter: FiltroDisponibilidad) {
   if (filter.idpersonal)     params.set('idpersonal', String(filter.idpersonal));
   if (filter.idestablecimiento) params.set('idestablecimiento', String(filter.idestablecimiento));
 
-  const r = await apiGet<{ ok: boolean; filas: FichaProgramadaRow[] }>(`/api/fichas/disponibilidad?${params.toString()}`);
+  const r = await get<{ ok: boolean; filas: FichaProgramadaRow[] }>(`/api/fichas/disponibilidad?${params.toString()}`);
   return r.filas;
 }
 
@@ -29,13 +29,13 @@ export async function confirmarFichaProgramada(input: {
   idfichaprogramada: number;
   idpoblacion: number;       // paciente titular o afiliado
 }) {
-  const r = await apiPost<{ ok: boolean; cita: CitaCreada }>(`/api/fichas/citas/programada`, input);
+  const r = await post<{ ok: boolean; cita: CitaCreada }>(`/api/fichas/citas/programada`, input);
   return r.cita;
 }
 
 // Mis citas (pendientes/futuras) del grupo familiar
 export async function getMisCitasGrupo(idpoblacionTitular: number) {
-  const r = await apiGet<{ ok: boolean; citas: Array<{
+  const r = await get<{ ok: boolean; citas: Array<{
     idcita: number;
     idpoblacion: number;
     paciente: string;

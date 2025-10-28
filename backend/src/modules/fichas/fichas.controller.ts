@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response,NextFunction } from 'express';
 import sql from 'mssql';
 import { execQuery } from '@/config/db';
 
@@ -78,16 +78,24 @@ export async function getAfiliadosByTitular(req: Request, res: Response) {
 // Busca alguna tabla conocida de especialidades y detecta columnas id/nombre.
 // Soporta: hcl_especialidad, se_consulta_externa, hcl_seccion_trabajo (u otras con columnas afines).
 // GET /api/fichas/especialidades
-export async function getEspecialidades(_req: Request, res: Response) {
+// GET /api/fichas/especialidades?idest=120
+export async function getEspecialidades(req: Request, res: Response) {
   try {
+    const { idest } = req.query as { idest?: string };
+    if (!idest) return res.status(400).json({ ok:false, msg:'Falta idest' });
+
     const rows = await execQuery<any>('db2', `
       SELECT DISTINCT
-        idcuaderno,
-        LTRIM(RTRIM(especialidad)) AS especialidad
-      FROM bdhistoriasclinicas.dbo.hcl_especialidad_medico
-      WHERE LTRIM(RTRIM(especialidad)) <> ''
+        f.idcuaderno,
+        LTRIM(RTRIM(hm.especialidad)) AS especialidad
+      FROM bdfichas.dbo.fic_fichas_programadas_pantalla f
+      JOIN bdhistoriasclinicas.dbo.hcl_especialidad_medico hm
+           ON hm.idcuaderno = f.idcuaderno
+      LEFT JOIN bdhistoriasclinicas.dbo.hcl_personal_salud ps
+           ON ps.idpersonalmedico = f.idpersonal
+      WHERE COALESCE(f.idestablecimiento, ps.idestablecimiento) = @idest
       ORDER BY especialidad
-    `);
+    `, r => r.input('idest', sql.Int, Number(idest)));
 
     const especialidades = rows.map((r:any) => ({
       idcuaderno: Number(r.idcuaderno),
@@ -102,12 +110,14 @@ export async function getEspecialidades(_req: Request, res: Response) {
 
 
 
+
 // ================== DOCTORES POR ESPECIALIDAD ==================
 // GET /api/fichas/doctores? idcuaderno=123
+// GET /api/fichas/doctores?idcuaderno=3023&idest=120
 export async function getDoctoresPorEspecialidad(req: Request, res: Response) {
   try {
-    const { idcuaderno } = req.query as { idcuaderno?: string };
-    if (!idcuaderno) return res.status(400).json({ ok:false, msg:'Falta idcuaderno' });
+    const { idcuaderno, idest } = req.query as { idcuaderno?: string; idest?: string };
+    if (!idcuaderno || !idest) return res.status(400).json({ ok:false, msg:'Faltan idcuaderno o idest' });
 
     const rows = await execQuery<any>('db2', `
       SELECT
@@ -119,9 +129,13 @@ export async function getDoctoresPorEspecialidad(req: Request, res: Response) {
       JOIN bdhistoriasclinicas.dbo.hcl_personal_salud ps
            ON ps.idpersonalmedico = f.idpersonal
       WHERE f.idcuaderno = @idc
+        AND COALESCE(f.idestablecimiento, ps.idestablecimiento) = @idest
       GROUP BY f.idpersonal, ps.per_nombre, ps.per_primer_apellido, ps.per_segundo_apellido
       ORDER BY ap1, ap2, nombre
-    `, r => r.input('idc', sql.Int, Number(idcuaderno)));
+    `, r => {
+      r.input('idc', sql.Int, Number(idcuaderno));
+      r.input('idest', sql.Int, Number(idest));
+    });
 
     const doctores = rows.map((d:any)=>({
       idpersonalmedico: d.idpersonal,
@@ -137,11 +151,12 @@ export async function getDoctoresPorEspecialidad(req: Request, res: Response) {
 // ================== SLOTS (HORAS LIBRES) ==================
 // Lee horas ocupadas desde hcl_citas y genera espacios libres
 // GET /api/fichas/doctores/:idpersonal/slots?fecha=YYYY-MM-DD
+// GET /api/fichas/doctores/:idpersonal/slots?fecha=YYYY-MM-DD&idest=120
 export async function getSlotsDoctor(req: Request, res: Response) {
   try {
     const idpersonal = Number(req.params.idpersonal);
-    const { fecha } = req.query as { fecha?: string };
-    if (!fecha) return res.status(400).json({ ok:false, msg:'Falta fecha' });
+    const { fecha, idest } = req.query as { fecha?: string; idest?: string };
+    if (!fecha || !idest) return res.status(400).json({ ok:false, msg:'Faltan fecha o idest' });
 
     const rows = await execQuery<any>('db2', `
       SELECT
@@ -152,8 +167,15 @@ export async function getSlotsDoctor(req: Request, res: Response) {
         AND CONVERT(date, fip_fecha_ini) = @f
         AND fip_estado = 'Disponible'
         AND fichasinpaciente = 1
+        AND COALESCE(idestablecimiento, (SELECT TOP 1 idestablecimiento
+                                         FROM bdhistoriasclinicas.dbo.hcl_personal_salud
+                                         WHERE idpersonalmedico = @idp)) = @idest
       ORDER BY fip_fecha_ini
-    `, r => { r.input('idp', sql.Int, idpersonal); r.input('f', sql.Date, fecha); });
+    `, r => {
+      r.input('idp', sql.Int, idpersonal);
+      r.input('f', sql.Date, fecha);
+      r.input('idest', sql.Int, Number(idest));
+    });
 
     res.json({ ok:true, slots: rows.map((x:any)=>x.hora), fichas: rows });
   } catch (e:any) {
@@ -194,3 +216,16 @@ export async function crearCitaDesdeFicha(req: Request, res: Response) {
   }
 }
 
+// src/modules/fichas/fichas.controller.ts
+import { findGrupoInfoByMatricula } from './fichas.repository';
+
+export async function getGrupoInfo(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { matricula } = req.params;
+    if (!matricula) return res.status(400).json({ message: 'Falta matrícula' });
+    const rows = await findGrupoInfoByMatricula(String(matricula));
+    res.json({ ok: true, count: rows.length, rows });
+  } catch (err) {
+    next(err);
+  }
+}

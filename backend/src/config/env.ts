@@ -21,6 +21,14 @@ export const env = {
   db1: process.env.SQL_DB1 ?? 'bdfichas',
   db2: process.env.SQL_DB2 ?? 'bdhistoriasclinicas',
 
-  // 👇 AÑADE ESTO
+
+ // 🚫 Establecimientos bloqueados para usuarios (sin tocar BD)
+  disabledEstIds: new Set(
+    (process.env.DISABLED_EST_IDS || '')
+      .split(',')
+      .map(s => Number(s.trim()))
+      .filter(n => !Number.isNaN(n))
+  ),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+
 };

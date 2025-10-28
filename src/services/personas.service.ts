@@ -1,4 +1,4 @@
-import { apiGet } from './http';
+import { get } from './http';
 
 export type Persona = {
   idpoblacion: number;
@@ -11,7 +11,7 @@ export type Persona = {
 };
 
 export async function getPersonaByMatricula(matricula: string) {
-  const r = await apiGet<{ ok:boolean; persona:any }>(
+  const r = await get<{ ok:boolean; persona:any }>(
     `/api/fichas/personas/matricula?matricula=${encodeURIComponent(matricula)}`
   );
   const p = r.persona;
@@ -27,7 +27,7 @@ export async function getPersonaByMatricula(matricula: string) {
 }
 
 export async function getAfiliados(idpoblacion: number) {
-  const r = await apiGet<{ ok:boolean; afiliados:any[] }>(
+  const r = await get<{ ok:boolean; afiliados:any[] }>(
     `/api/fichas/personas/${idpoblacion}/afiliados`
   );
   return (r.afiliados || []).map(p => ({
