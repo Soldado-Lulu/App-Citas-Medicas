@@ -5,11 +5,16 @@ import { env } from '@/config/env';
 
 // ⚠️ ¡No llames a tu tipo igual que el de jsonwebtoken!
 // Creamos un tipo que *extiende* el de la librería.
+// ... (lo que ya tienes arriba)
 export type AppJwtPayload = LibJwtPayload & {
-  sub: number;   // nosotros garantizamos número en nuestro token
-  est?: number;  // id establecimiento, si lo incluyes en el token
-  role?: string; // opcional: 'admin' | 'user'
+  sub: number;
+  est?: number;     // id establecimiento
+  role?: string;
+  idpersonal?: number; // 👈 NUEVO: id del médico (hcl_personal_salud.idpersonalmedico)
+  idc?: number | null; // 👈 NUEVO: idcuaderno (consultorio por defecto)
 };
+// ... (resto igual)
+
 
 // (opcional pero recomendado) añade el tipo a Express.Request para evitar "as any"
 declare global {

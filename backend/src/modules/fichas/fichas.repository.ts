@@ -1,3 +1,4 @@
+// src/modules/fichas/fichas.repository.ts
 import sql from 'mssql';
 import { execQuery } from '@/config/db';
 

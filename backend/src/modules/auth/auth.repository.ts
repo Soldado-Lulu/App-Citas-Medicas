@@ -30,3 +30,16 @@ export async function findByMatricula(matricula: string) {
   });
   return rows[0] ?? null;
 }
+export async function findIdPersonalByCI(ci?: string | null): Promise<number | undefined> {
+  const doc = (ci ?? '').trim();
+  if (!doc) return undefined;
+
+  const rows = await execQuery<any>('db2', `
+    SELECT TOP 1 ps.idpersonalmedico
+    FROM bdhistoriasclinicas.dbo.hcl_personal_salud ps
+    WHERE LTRIM(RTRIM(ps.ci)) = @ci
+      AND ps.per_estado = 'A'     -- si existe ese flag de activo; quítalo si no
+  `, (r: sql.Request) => r.input('ci', sql.VarChar(50), doc));
+
+  return rows?.[0]?.idpersonalmedico ?? undefined;
+}

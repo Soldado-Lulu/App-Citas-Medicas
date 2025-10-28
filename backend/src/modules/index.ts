@@ -3,7 +3,7 @@
 // Así el index.ts principal se mantiene limpio y mantenible
 
 import { Router } from 'express';
-
+import citasRoutes from './citas/citas.routes';
 // Importa cada grupo de rutas (módulos)
 import authRoutes from './auth/auth.routes';
 import adminRoutes from './admin/admin.routes';
@@ -14,7 +14,7 @@ import medicosRoutes from './medicos/medicos.routes';
 
 // Creamos el router principal que agrupa todo
 const api = Router();
-
+api.use('/citas', citasRoutes);
 // Montamos las rutas bajo sus prefijos
 api.use('/auth', authRoutes);
 api.use('/admin', adminRoutes);
