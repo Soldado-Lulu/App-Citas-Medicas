@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────
-// 📄 app/user/dashboard.tsx (COMPLETO)
+// 📄 app/user/dashboard.tsx (ACTUALIZADO)
 // ───────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,19 +24,13 @@ import {
   type Persona,
 } from '../../src/services/personas.service';
 
-// ✅ Servicios de agenda (AJUSTADOS A TU BD: usan idcuaderno + idest)
-import {
-  getEspecialidades,        // -> getEspecialidades(idest)
-  getDoctores,              // -> getDoctores(idcuaderno, idest)
-  getSlots,                 // -> getSlots(idpersonal, fecha, idest)
-  crearCita,
-  type Doctor,
-  type Especialidad,
-} from '../../src/services/agenda.service';
+// ✅ Endpoints “mis slots” (consultorio derivado del usuario) + confirmar por ficha
+import { listarMisSlots, confirmarFichaProgramada } from '../../src/services/citas.service';
 
 // ✅ Resumen del grupo (consulta CTE desde backend)
 import { getGrupoInfo, type GrupoInfoRow } from '../../src/services/grupo.service';
 import GroupInfoModal from '@/components/GroupInfoModal';
+import AgendarSelectors from '@/components/AgendarSelectors';
 
 // Iniciales del nombre (ej. "Juan Pérez" → "JP")
 function getIni(full?: string | null) {
@@ -61,15 +55,12 @@ export default function PerfilPaciente() {
   const [fecha, setFecha] = useState<string>(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [saving, setSaving] = useState(false);
 
-  // —— Catálogos y selecciones
-  const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
-  const [espSel, setEspSel] = useState<Especialidad | undefined>(); // ⚠️ usa idcuaderno
-  const [doctores, setDoctores] = useState<Doctor[]>([]);
-  const [docSel, setDocSel] = useState<Doctor | undefined>();
-  const [slots, setSlots] = useState<string[]>([]);
+  // —— Horarios (fichas) y selección
+  const [fichas, setFichas] = useState<{ idfichaprogramada: number; hora: string }[]>([]);
   const [hora, setHora] = useState<string>('');
+  const [idfichaSel, setIdfichaSel] = useState<number | null>(null);
 
-  // —— Resumen del grupo (nuevo)
+  // —— Resumen del grupo (para mostrar datos del paciente)
   const [grupoLoading, setGrupoLoading] = useState(false);
   const [grupo, setGrupo] = useState<GrupoInfoRow[]>([]);
 
@@ -78,14 +69,6 @@ export default function PerfilPaciente() {
     () => (pacSel ? grupo.filter((g) => g.idpoblacion === pacSel.idpoblacion) : []),
     [grupo, pacSel]
   );
-
-  // Establecimiento del paciente seleccionado (para filtrar catálogos)
-  const idEst = useMemo<number | null>(() => {
-    const p = resumenSeleccionado[0];
-    // si tu CTE devuelve idest_poblacion, úsalo; si quieres usar el de consulta, cambia a otro campo
-    // @ts-ignore por si aún no está en el tipo del front
-    return p?.idest_poblacion ?? null;
-  }, [resumenSeleccionado]);
 
   // ─────────────────────────────────────────────
   // 1) Cargar titular y afiliados al entrar
@@ -118,18 +101,14 @@ export default function PerfilPaciente() {
   );
 
   // ─────────────────────────────────────────────
-  // 2) Abrir el modal de AGENDA para un paciente
-  //    Trae también el resumen del grupo desde backend
+  // 2) Abrir el modal de AGENDA para un paciente + cargar resumen
   // ─────────────────────────────────────────────
   async function abrirAgendar(p: Persona) {
     setPacSel(p);
     setHora('');
-    setDocSel(undefined);
-    setSlots([]);
-    setEspSel(undefined);
-    setDoctores([]);
+    setIdfichaSel(null);
+    setFichas([]);
 
-    // Resumen del grupo (CTE) para conocer idEst y datos visibles
     setGrupoLoading(true);
     try {
       const data = await getGrupoInfo(user!.matricula);
@@ -140,58 +119,32 @@ export default function PerfilPaciente() {
     }
   }
 
-  // 2.1) Cuando tengamos idEst (del paciente) → cargar especialidades filtradas
+  // 2.1) Al abrir el modal o cambiar fecha → traer horarios del consultorio del usuario
   useEffect(() => {
     (async () => {
-      if (!open || !idEst) return;
-      const esp = await getEspecialidades(idEst);
-      setEspecialidades(esp);
-      // reset dependientes
-      setEspSel(undefined);
-      setDoctores([]);
-      setDocSel(undefined);
-      setSlots([]);
-      setHora('');
+      if (!open || !fecha) return;
+      try {
+        const r = await listarMisSlots(fecha); // { slots, fichas, consultorio }
+        // asumimos que r.fichas = [{ idfichaprogramada, hora }]
+        setFichas(r.fichas ?? []);
+        setHora('');
+        setIdfichaSel(null);
+      } catch {
+        setFichas([]);
+      }
     })();
-  }, [open, idEst]);
-
-  // 2.2) Cuando cambia la especialidad → cargar doctores (filtrado por idEst)
-  useEffect(() => {
-    (async () => {
-      if (!espSel || !idEst) return;
-      const ds = await getDoctores(espSel.idcuaderno, idEst);
-      setDoctores(ds);
-      setDocSel(undefined);
-      setSlots([]);
-      setHora('');
-    })();
-  }, [espSel, idEst]);
-
-  // 2.3) Cuando elige doctor o cambia fecha → cargar horas libres (filtrado por idEst)
- useEffect(() => {
-  (async () => {
-    if (!docSel || !open || !idEst) return;
-    const s = await getSlots(docSel.idpersonalmedico, fecha, idEst);
-    // s: { hora: string; disponible: boolean }[]
-    setSlots(s.filter(x => x.disponible).map(x => x.hora)); // ← ahora es string[]
-  })();
-}, [docSel, fecha, open, idEst]);
-
+  }, [open, fecha]);
 
   // ─────────────────────────────────────────────
-  // 3) Confirmar y crear cita en backend
+  // 3) Confirmar y crear cita en backend (por id de ficha)
   // ─────────────────────────────────────────────
   async function confirmar() {
-    if (!pacSel || !docSel || !fecha || !hora) return;
+    if (!pacSel || !idfichaSel) return;
     setSaving(true);
     try {
-      await crearCita({
+      await confirmarFichaProgramada({
+        idfichaprogramada: idfichaSel,
         idpoblacion: pacSel.idpoblacion,
-        idpersonal: docSel.idpersonalmedico,
-        fecha,
-        hora,
-        // si tu endpoint necesita idcuaderno, agrégalo:
-        // idcuaderno: espSel?.idcuaderno,
       });
       setOpen(false);
     } catch (e: any) {
@@ -274,38 +227,39 @@ export default function PerfilPaciente() {
         )}
       />
 
-      {/* 🗓️ Modal de agenda + Resumen de Paciente Seleccionado */}
+      {/* 🗓️ Modal de agenda + Resumen del Paciente Seleccionado */}
       <GroupInfoModal
         visible={open}
         loading={grupoLoading}
-        data={resumenSeleccionado} // 👈 solo el seleccionado
+        data={resumenSeleccionado}
         onConfirm={confirmar}
         onClose={() => setOpen(false)}
       >
-      
-
-
-        {/* 3) Fecha */}
+        {/* Fecha */}
         <Text style={S.label}>Fecha (YYYY-MM-DD)</Text>
         <TextInput value={fecha} onChangeText={setFecha} style={S.input} />
 
-        {/* 4) Horarios disponibles */}
-        {!!docSel && (
-          <>
-            <Text style={S.label}>Hora</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {slots.map((h) => (
-                <TouchableOpacity
-                  key={h}
-                  style={[S.chip, h === hora && S.chipActive]}
-                  onPress={() => setHora(h)}
-                >
-                  <Text style={[S.chipTxt, h === hora && S.chipTxtActive]}>{h}</Text>
-                </TouchableOpacity>
-              ))}
-              {!slots.length && <Text style={S.muted}>Sin horarios disponibles</Text>}
-            </View>
-          </>
+        {/* Horarios disponibles (del consultorio del usuario) */}
+        <Text style={S.label}>Hora</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {fichas.map((f) => (
+            <TouchableOpacity
+              key={f.idfichaprogramada}
+              style={[S.chip, f.hora === hora && S.chipActive]}
+              onPress={() => { setHora(f.hora); setIdfichaSel(f.idfichaprogramada); }}
+            >
+              <Text style={[S.chipTxt, f.hora === hora && S.chipTxtActive]}>{f.hora}</Text>
+            </TouchableOpacity>
+          ))}
+          {!fichas.length && <Text style={S.muted}>Sin horarios disponibles</Text>}
+        </View>
+
+        {/* Botón Confirmar dentro del modal (ya lo manejas con onConfirm) */}
+        {saving && (
+          <View style={{ marginTop: 8, alignItems: 'center' }}>
+            <ActivityIndicator />
+            <Text style={S.muted}>Creando cita…</Text>
+          </View>
         )}
       </GroupInfoModal>
     </View>
@@ -361,19 +315,6 @@ const S = StyleSheet.create({
     height: 42,
     backgroundColor: '#fff',
   },
-  select: { marginVertical: 6 },
-  pill: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    backgroundColor: '#fff',
-  },
-  pillActive: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
-  pillTxt: { color: '#374151' },
-  pillTxtActive: { color: '#3730A3', fontWeight: '700' },
   chip: {
     borderWidth: 1,
     borderColor: '#E5E7EB',
