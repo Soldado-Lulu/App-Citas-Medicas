@@ -1,208 +1,181 @@
-// ───────────────────────────────────────────────────────────────
-// 📄 app/user/agenda/index.tsx
-// Encabezado con ficha completa del paciente + flujo de agendado
-// ───────────────────────────────────────────────────────────────
+// app/(protected)/user/agendar/index.tsx
+import React, { useMemo, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useEspecialidades, useMedicos, useFechas, useHoras, useCrearCita } from '@/src/features/agendar/queries';
 
-import { useState, useMemo } from 'react';
-import { View, Text, FlatList, TextInput } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import dayjs from 'dayjs';
+// Simula datos del paciente actual que ya tienes en tu contexto/dashboard:
+const CURRENT = {
+  idpoblacion: 12345,             // <- reemplaza con el real
+  idestablecimiento: 7,           // <- desde getGrupoInfo o tu sesión
+};
 
-import { Page } from '@/src/ui/layout/Page';
-import { Button } from '@/src/ui/primitives/Button';
-import { EmptyState } from '@/src/ui/data/EmptyState';
+export default function AgendarScreen() {
+  const [especialidad, setEspecialidad] = useState<string | undefined>();
+  const [medicoId, setMedicoId] = useState<number | undefined>();
+  const [fecha, setFecha] = useState<string | undefined>();
+  const [slot, setSlot] = useState<any | null>(null);
 
-import { useAuth } from '@/src/contexts/AuthContext';
-import { getGrupoInfo } from '@/src/services/grupo.service';
-import PatientDetailsCard, { PatientInfo } from '@/src/components/PatientDetailsCard';
-
-import { useEspecialidades, useDoctores, useSlots, useConfirmarFicha } from '@/src/features/fichas/hooks';
-import type { Slot } from '@/src/features/fichas/types';
-
-export default function Agendar() {
-  const { user } = useAuth();
-  const params = useLocalSearchParams<{
-    idp?: string; nombre?: string; matricula?: string; documento?: string;
-  }>();
-
-  // Paciente objetivo (de URL o user)
-  const idpParam = params.idp ? Number(params.idp) : undefined;
-  const [idpoblacionSeleccionado, setIdPoblacion] =
-    useState<number | undefined>(idpParam ?? user?.idpoblacion ?? undefined);
-
-  // Traer grupo para completar ficha
-  const { data: grupo } = useQuery({
-    queryKey: ['grupo', user?.matricula],
-    enabled: !!user?.matricula,
-    queryFn: () => getGrupoInfo(user!.matricula),
-    staleTime: 60_000,
+  // 1) Cargar opciones
+  const { data: especialidades, isLoading: loadEsp } = useEspecialidades(CURRENT.idestablecimiento);
+  const { data: medicos, isLoading: loadMed } = useMedicos(CURRENT.idestablecimiento, especialidad);
+  const { data: fechas, isLoading: loadFech } = useFechas({ idest: CURRENT.idestablecimiento, medicoId, especialidad });
+  const { data: horas, isLoading: loadHoras } = useHoras({
+    idest: CURRENT.idestablecimiento,
+    fecha: fecha || '',
+    medicoId,
+    especialidad,
   });
 
-  const pacienteRow = (grupo || []).find(g => g.idpoblacion === idpoblacionSeleccionado) || null;
+  // 2) Mutación para crear cita
+  const crear = useCrearCita();
 
-  // Mapear a PatientInfo para el card
-  const ficha: PatientInfo = useMemo(() => ({
-    idpoblacion: pacienteRow?.idpoblacion ?? idpoblacionSeleccionado,
-    nombre_completo: pacienteRow?.nombre_completo ?? params.nombre,
-    matricula: pacienteRow?.matricula ?? params.matricula,
-    documento: pacienteRow?.documento ?? params.documento,
-    zona: (pacienteRow as any)?.pac_zona,
-    direccion: (pacienteRow as any)?.pac_direccion,
-    idestablecimiento_asignado:
-      (pacienteRow as any)?.idestablecimiento_asignado ??
-      (pacienteRow as any)?.idestablecimiento,
-    establecimiento_asignado: (pacienteRow as any)?.establecimiento_asignado,
-    establecimiento_en_consulta:
-      (pacienteRow as any)?.establecimiento_en_consulta ??
-      (pacienteRow as any)?.Establecimiento,
-    consultorio:
-      (pacienteRow as any)?.consultorio_asignado ??
-      (pacienteRow as any)?.Consultorio,
-    telefono: (pacienteRow as any)?.telefono,
-    email: (pacienteRow as any)?.email,
-    fecha_nacimiento: (pacienteRow as any)?.fecha_nacimiento,
-    sexo: (pacienteRow as any)?.sexo,
-    parentesco: (pacienteRow as any)?.parentesco,
-  }), [pacienteRow, idpoblacionSeleccionado, params]);
+  const disabledConfirm = !slot || crear.isPending;
 
-  // Establecimiento del usuario
-  const idest = (user?.idestablecimiento ?? undefined) as number | undefined;
+  const onConfirm = () => {
+    if (!slot) return;
+    crear.mutate({
+      idpoblacion: CURRENT.idpoblacion,
+      idestablecimiento: CURRENT.idestablecimiento,
+      idfichaprogramada: slot.idfichaprogramada,
+      idpersonalmedico: slot.idpersonalmedico,
+      idcuaderno: slot.idcuaderno,
+      idconsultorio: slot.idconsultorio ?? null,
+      fecha: fecha!,
+      hora: slot.hora,
+    }, {
+      onSuccess: () => {
+        Alert.alert('Listo', 'Tu cita fue reservada');
+        setSlot(null);
+      },
+      onError: (e: any) => {
+        Alert.alert('Ups', e?.message || 'No se pudo reservar el horario');
+      },
+    });
+  };
 
-  // Paso a paso
-  const [idespecialidad, setIdEspecialidad] = useState<number | undefined>(undefined);
-  const [idpersonalmedico, setIdPersonal]   = useState<number | undefined>(undefined);
-  const [fecha, setFecha] = useState(dayjs().format('YYYY-MM-DD'));
-
-  const { data: especialidades, isLoading: loadingEsp } = useEspecialidades(idest);
-  const { data: doctores,       isLoading: loadingDoc } = useDoctores(idest, idespecialidad);
-  const { data: slots,          isLoading: loadingSlots, refetch } =
-    useSlots(idest, idpersonalmedico, fecha);
-
-  const { mutate: confirmar, isPending: confirmando } = useConfirmarFicha();
-  const disponible = useMemo<Slot[]>(
-    () => (slots ?? []).filter((s: Slot) => s.estado === 'Disponible'),
-    [slots]
+  // Render helper
+  const Item = ({ label, selected, onPress }: any) => (
+    <TouchableOpacity onPress={onPress} style={{
+      padding: 12, marginVertical: 6, borderRadius: 10,
+      borderWidth: 1, borderColor: selected ? '#2563eb' : '#e5e7eb',
+      backgroundColor: selected ? '#dbeafe' : 'white'
+    }}>
+      <Text style={{ fontWeight: '600' }}>{label}</Text>
+    </TouchableOpacity>
   );
 
-  function onConfirmar(slot: Slot) {
-    if (!idpoblacionSeleccionado) return;
-    confirmar(
-      { idfichaprogramada: slot.idfichaprogramada, idpoblacion: idpoblacionSeleccionado },
-      { onSuccess: () => refetch() }
-    );
-  }
-
-  if (!idest) {
-    return (
-      <Page>
-        <Text style={{ fontSize: 20, fontWeight: '800' }}>Agendar por especialidad</Text>
-        <Text style={{ color: '#6b7280', marginTop: 6 }}>
-          No tienes establecimiento asignado. Pide al administrador habilitarlo.
-        </Text>
-      </Page>
-    );
-  }
-
   return (
-    <Page>
-      <Text style={{ fontSize: 20, fontWeight: '800' }}>Agendar por especialidad</Text>
-      <Text style={{ color: '#6b7280', marginTop: 4 }}>Establecimiento: {String(idest)}</Text>
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+      <Text style={{ fontSize: 20, fontWeight: '700' }}>Agendar cita</Text>
 
-      {/* ✅ FICHA COMPLETA DEL PACIENTE */}
-      <PatientDetailsCard data={ficha} />
-
-      {/* Chips para cambiar de paciente dentro del mismo grupo (opcional) */}
-      {grupo?.length ? (
-        <FlatList
-          horizontal
-          data={grupo}
-          keyExtractor={(p) => String(p.idpoblacion)}
-          contentContainerStyle={{ gap: 8, marginTop: 12 }}
-          renderItem={({ item }) => (
-            <Button
-              label={item.nombre_completo}
-              variant={item.idpoblacion === idpoblacionSeleccionado ? 'primary' : 'ghost'}
-              onPress={() => setIdPoblacion(item.idpoblacion)}
-            />
-          )}
-        />
-      ) : null}
-
-      {/* 1) Especialidad */}
-      <View style={{ marginTop: 16 }}>
-        <Text style={{ fontWeight: '700', marginBottom: 8 }}>1) Selecciona especialidad</Text>
+      {/* Especialidad */}
+      <Text style={{ marginTop: 8, fontWeight: '600' }}>1. Especialidad</Text>
+      {loadEsp ? <ActivityIndicator/> : (
         <FlatList
           horizontal
           data={especialidades || []}
-          keyExtractor={(e) => String(e.id)}
+          keyExtractor={(it: any) => it.especialidad}
           contentContainerStyle={{ gap: 8 }}
           renderItem={({ item }) => (
-            <Button
-              label={item.nombre}
-              variant={idespecialidad === item.id ? 'primary' : 'ghost'}
-              onPress={() => { setIdEspecialidad(item.id); setIdPersonal(undefined); }}
+            <Item
+              label={`${item.especialidad} (${item.cupos})`}
+              selected={especialidad === item.especialidad}
+              onPress={() => {
+                setEspecialidad(item.especialidad);
+                setMedicoId(undefined);
+                setFecha(undefined);
+                setSlot(null);
+              }}
             />
           )}
-          ListEmptyComponent={
-            loadingEsp ? <Text>Cargando…</Text> :
-            <EmptyState title="No se encontraron especialidades." />
-          }
         />
-      </View>
+      )}
 
-      {/* 2) Médico */}
-      <View style={{ marginTop: 16 }}>
-        <Text style={{ fontWeight: '700', marginBottom: 8 }}>2) Selecciona médico</Text>
-        <FlatList
-          horizontal
-          data={idespecialidad ? (doctores || []) : []}
-          keyExtractor={(e) => String(e.idpersonalmedico)}
-          contentContainerStyle={{ gap: 8 }}
-          renderItem={({ item }) => (
-            <Button
-              label={item.nombre_completo}
-              variant={idpersonalmedico === item.idpersonalmedico ? 'primary' : 'ghost'}
-              onPress={() => setIdPersonal(item.idpersonalmedico)}
+      {/* Médico */}
+      {especialidad && (
+        <>
+          <Text style={{ marginTop: 8, fontWeight: '600' }}>2. Médico</Text>
+          {loadMed ? <ActivityIndicator/> : (
+            <FlatList
+              horizontal
+              data={medicos || []}
+              keyExtractor={(it: any) => String(it.idpersonalmedico)}
+              contentContainerStyle={{ gap: 8 }}
+              renderItem={({ item }) => (
+                <Item
+                  label={`${item.nombre_completo ?? 'Médico'} (${item.cupos})`}
+                  selected={medicoId === item.idpersonalmedico}
+                  onPress={() => {
+                    setMedicoId(item.idpersonalmedico);
+                    setFecha(undefined);
+                    setSlot(null);
+                  }}
+                />
+              )}
             />
           )}
-          ListEmptyComponent={
-            !idespecialidad ? <Text style={{ color: '#9ca3af' }}>Elige una especialidad</Text> :
-            loadingDoc ? <Text>Cargando…</Text> :
-            <EmptyState title="Sin médicos" subtitle="No hay médicos para esta especialidad." />
-          }
-        />
-      </View>
+        </>
+      )}
 
-      {/* 3) Fecha */}
-      <View style={{ marginTop: 16 }}>
-        <Text style={{ fontWeight: '700', marginBottom: 8 }}>3) Selecciona fecha</Text>
-        <TextInput
-          value={fecha}
-          onChangeText={setFecha}
-          placeholder="YYYY-MM-DD"
-          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, backgroundColor:'#fff' }}
-        />
-      </View>
-
-      {/* 4) Horarios */}
-      <View style={{ marginTop: 16 }}>
-        <Text style={{ fontWeight: '700', marginBottom: 8 }}>4) Selecciona hora</Text>
-        <FlatList
-          data={disponible}
-          keyExtractor={(s) => String(s.idfichaprogramada)}
-          numColumns={3}
-          columnWrapperStyle={{ gap: 8 }}
-          contentContainerStyle={{ gap: 8 }}
-          renderItem={({ item }) => (
-            <Button label={item.hora} onPress={() => onConfirmar(item)} loading={confirmando} />
+      {/* Fecha */}
+      {medicoId && (
+        <>
+          <Text style={{ marginTop: 8, fontWeight: '600' }}>3. Fecha</Text>
+          {loadFech ? <ActivityIndicator/> : (
+            <FlatList
+              horizontal
+              data={fechas || []}
+              keyExtractor={(it: any) => it.fecha}
+              contentContainerStyle={{ gap: 8 }}
+              renderItem={({ item }) => (
+                <Item
+                  label={`${item.fecha} (${item.cupos})`}
+                  selected={fecha === item.fecha}
+                  onPress={() => {
+                    setFecha(item.fecha);
+                    setSlot(null);
+                  }}
+                />
+              )}
+            />
           )}
-          ListEmptyComponent={
-            loadingSlots ? <Text>Cargando horas…</Text> :
-            <EmptyState title="No hay horarios disponibles" onRetry={refetch} />
-          }
-        />
-      </View>
-    </Page>
+        </>
+      )}
+
+      {/* Horas */}
+      {fecha && (
+        <>
+          <Text style={{ marginTop: 8, fontWeight: '600' }}>4. Hora</Text>
+          {loadHoras ? <ActivityIndicator/> : (
+            <FlatList
+              data={horas || []}
+              keyExtractor={(it: any) => String(it.idfichaprogramada)}
+              contentContainerStyle={{ gap: 8 }}
+              renderItem={({ item }) => (
+                <Item
+                  label={`${item.hora} · ${item.consultorio}`}
+                  selected={slot?.idfichaprogramada === item.idfichaprogramada}
+                  onPress={() => setSlot(item)}
+                />
+              )}
+            />
+          )}
+        </>
+      )}
+
+      {/* Confirmación */}
+      <TouchableOpacity
+        disabled={disabledConfirm}
+        onPress={onConfirm}
+        style={{
+          marginTop: 'auto', padding: 14, borderRadius: 12,
+          backgroundColor: disabledConfirm ? '#93c5fd' : '#2563eb'
+        }}
+      >
+        <Text style={{ color: 'white', textAlign: 'center', fontWeight: '700' }}>
+          {crear.isPending ? 'Reservando…' : 'Confirmar reserva'}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
