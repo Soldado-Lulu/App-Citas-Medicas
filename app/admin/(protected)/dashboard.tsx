@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Appbar, Card, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { storage } from '@/lib/storage';
+import { storage } from '@/src/lib/storage';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -24,11 +24,7 @@ export default function AdminDashboard() {
     </Card>
   );
 
-  const signOut = async () => {
-    await storage.removeItem(storage.TOKENS.admin);
-    router.replace('/admin/(public)/login');
-  };
-
+ 
   return (
     <View style={{ flex: 1 }}>
       <Appbar.Header>

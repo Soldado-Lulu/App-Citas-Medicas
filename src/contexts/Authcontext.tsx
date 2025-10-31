@@ -1,7 +1,7 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '../services/auth.service';
-import { loginByMatricula } from '../services/auth.service';
+import { loginByMatricula, me } from '../services/auth.service';
+import { storage } from '../lib/storage';
 
 type AuthState = {
   user: User | null;
@@ -23,33 +23,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setErr] = useState<string | null>(null);
 
-  // Si quieres hidratar desde storage en el futuro, hazlo aquí
+  // Hidratar sesión si hay token guardado
   useEffect(() => {
-    // p.ej. leer AsyncStorage y setUser(...)
+    (async () => {
+      const token = await storage.getItem(storage.TOKENS.user);
+      if (!token) return;
+      try {
+        setLoading(true);
+        const u = await me();       // obtiene datos con el token
+        setUser(u?.user ?? u ?? null);
+      } catch {
+        await storage.removeItem(storage.TOKENS.user);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  async function signIn(matricula: string) {
-    setErr(null);
-    setLoading(true);
-    try {
-      const u = await loginByMatricula(matricula);
-      setUser(u);
-      return u;
-    } catch (e: any) {
-      setErr(e.message || 'Error de login');
-      return null;
-    } finally {
-      setLoading(false);
-    }
+ async function signIn(matricula: string) {
+  setErr(null);
+  setLoading(true);
+  try {
+    const { user, token } = await loginByMatricula(matricula);
+    await storage.setItem(storage.TOKENS.user, token);  // 👈 guarda el token
+    setUser(user);
+    return user;
+  } catch (e: any) {
+    setErr(e.message || 'Error de login');
+    return null;
+  } finally {
+    setLoading(false);
   }
+}
 
   async function signOut() {
     setUser(null);
     setErr(null);
+    await storage.removeItem(storage.TOKENS.user);         // <- limpia token
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, error: error, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, error, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

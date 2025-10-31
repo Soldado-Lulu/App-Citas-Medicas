@@ -1,13 +1,6 @@
 // =============================================
-// ADAPTADO A TU ESTRUCTURA EXISTENTE
-// (Expo Router, GroupInfoModal, servicios en src/services)
-// =============================================
-
-// =============================================
 // src/services/agendar.service.ts
 // =============================================
-//import { API } from '@/src/lib/api'; // si ya tienes un helper; si no, usa fetch como abajo
-
 export type DoctorDisponible = {
   idpersonalmedico: number;
   nombre_completo: string;

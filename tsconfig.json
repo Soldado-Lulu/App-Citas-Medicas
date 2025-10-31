@@ -6,10 +6,9 @@
     "strict": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
+   "paths": {
+      "@/*": ["./*"],
+      "@/src/*": ["src/*"]
     }
   },
   "include": [
@@ -17,7 +16,7 @@
     "src",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "babel.config.js"  ],
   "exclude": [
     "node_modules",
     "dist"

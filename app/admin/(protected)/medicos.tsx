@@ -7,7 +7,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Appbar, Searchbar, List, ActivityIndicator, Snackbar } from 'react-native-paper';
-import { get } from '@/services/http';
+import { get } from '@/src/services/http';
 
 type Medico = { id: number; nombre: string; especialidad?: string | null };
 type Page<T> = { total: number; page: number; limit: number; items: T[] };

@@ -12,6 +12,7 @@ export async function getDoctoresDisponibles(req: Request, res: Response) {
   } catch (e:any) {
     res.status(500).json({ ok:false, msg:e.message });
   }
+  
 }
 
 export async function getSlotsMgMf(req: Request, res: Response) {
@@ -27,6 +28,7 @@ export async function getSlotsMgMf(req: Request, res: Response) {
       Number(idest),
       idconsultorio ? Number(idconsultorio) : null
     );
+
     res.json({ ok:true, count: rows.length, slots: rows });
   } catch (e:any) {
     res.status(500).json({ ok:false, msg:e.message });

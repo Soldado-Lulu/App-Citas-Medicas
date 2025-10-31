@@ -1,6 +1,6 @@
 // src/services/admin-estados.service.ts
-import { get, patch } from '@/services/http';
-import { storage } from '@/lib/storage';
+import { get, patch } from '@/src/services/http';
+import { storage } from '@/src/lib/storage';
 
 async function adminToken() {
   const t = await storage.getItem(storage.TOKENS.admin);

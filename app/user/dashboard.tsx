@@ -1,5 +1,8 @@
 // ───────────────────────────────────────────────────────────────
-// 📄 app/user/dashboard.tsx (ACTUALIZADO)
+// 📄 app/user/dashboard.tsx
+// Muestra grupo familiar, datos del titular/afiliados y permite:
+//  - Agendar rápido (modal por ficha) mostrando ficha COMPLETA del paciente
+//  - Ir a Agendar por especialidad con datos del paciente (params)
 // ───────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -13,69 +16,58 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-// ✅ Usuario autenticado (contiene la matrícula del login)
-import { useAuth } from '../../src/contexts/AuthContext';
-
-// ✅ Servicios de personas (traen titular y afiliados)
+import { useAuth } from '@/src/contexts/AuthContext';
 import {
   getPersonaByMatricula,
   getAfiliados,
   type Persona,
-} from '../../src/services/personas.service';
+} from '@/src/services/personas.service';
+import { getGrupoInfo, type GrupoInfoRow } from '@/src/services/grupo.service';
+import { listarMisSlots, confirmarFichaProgramada } from '@/src/services/citas.service';
 
-// ✅ Endpoints “mis slots” (consultorio derivado del usuario) + confirmar por ficha
-import { listarMisSlots, confirmarFichaProgramada } from '../../src/services/citas.service';
-
-// ✅ Resumen del grupo (consulta CTE desde backend)
-import { getGrupoInfo, type GrupoInfoRow } from '../../src/services/grupo.service';
-import GroupInfoModal from '@/components/GroupInfoModal';
-import AgendarSelectors from '@/components/AgendarSelectors';
-
-// Iniciales del nombre (ej. "Juan Pérez" → "JP")
+// Utilidad: iniciales del nombre (Juan Pérez → JP)
 function getIni(full?: string | null) {
   const p = (full || '').trim().split(/\s+/);
   return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || 'P';
 }
 
 export default function PerfilPaciente() {
-  const { user } = useAuth(); // viene del login, tiene .matricula
+  const { user } = useAuth();
+  const router = useRouter();
 
-  // —— Datos de personas
+  // Datos de personas
   const [titular, setTitular] = useState<Persona | null>(null);
   const [afiliados, setAfiliados] = useState<Persona[]>([]);
 
-  // —— Estado general de carga/errores
+  // Carga/errores
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // —— Estados del modal de AGENDA
+  // Modal agendado rápido
   const [open, setOpen] = useState(false);
   const [pacSel, setPacSel] = useState<Persona | null>(null);
-  const [fecha, setFecha] = useState<string>(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
+  const [fecha, setFecha] = useState<string>(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
-  // —— Horarios (fichas) y selección
+  // Horarios (fichas)
   const [fichas, setFichas] = useState<{ idfichaprogramada: number; hora: string }[]>([]);
   const [hora, setHora] = useState<string>('');
   const [idfichaSel, setIdfichaSel] = useState<number | null>(null);
 
-  // —— Resumen del grupo (para mostrar datos del paciente)
+  // Resumen de grupo para modal
   const [grupoLoading, setGrupoLoading] = useState(false);
   const [grupo, setGrupo] = useState<GrupoInfoRow[]>([]);
 
-  // Solo el paciente seleccionado en el modal
   const resumenSeleccionado = useMemo(
     () => (pacSel ? grupo.filter((g) => g.idpoblacion === pacSel.idpoblacion) : []),
     [grupo, pacSel]
   );
 
-  // ─────────────────────────────────────────────
-  // 1) Cargar titular y afiliados al entrar
-  // ─────────────────────────────────────────────
+  // Cargar titular y afiliados
   useEffect(() => {
     if (!user?.matricula) return;
-
     (async () => {
       try {
         setErr(null);
@@ -94,15 +86,14 @@ export default function PerfilPaciente() {
     })();
   }, [user?.matricula]);
 
-  // Para la lista, quitamos al titular de afiliados (seguridad extra)
   const afiliadosSolo = useMemo(
     () => afiliados.filter((a) => a.idpoblacion !== titular?.idpoblacion),
     [afiliados, titular]
   );
+{/*
 
-  // ─────────────────────────────────────────────
-  // 2) Abrir el modal de AGENDA para un paciente + cargar resumen
-  // ─────────────────────────────────────────────
+
+  // Abre modal de agenda rápida y precarga resumen + fichas del día
   async function abrirAgendar(p: Persona) {
     setPacSel(p);
     setHora('');
@@ -118,14 +109,13 @@ export default function PerfilPaciente() {
       setOpen(true);
     }
   }
-
-  // 2.1) Al abrir el modal o cambiar fecha → traer horarios del consultorio del usuario
+*/}
+  // Traer fichas cuando el modal está abierto o cambia la fecha
   useEffect(() => {
     (async () => {
       if (!open || !fecha) return;
       try {
-        const r = await listarMisSlots(fecha); // { slots, fichas, consultorio }
-        // asumimos que r.fichas = [{ idfichaprogramada, hora }]
+        const r = await listarMisSlots(fecha); // { fichas: [{ idfichaprogramada, hora }], ... }
         setFichas(r.fichas ?? []);
         setHora('');
         setIdfichaSel(null);
@@ -135,9 +125,7 @@ export default function PerfilPaciente() {
     })();
   }, [open, fecha]);
 
-  // ─────────────────────────────────────────────
-  // 3) Confirmar y crear cita en backend (por id de ficha)
-  // ─────────────────────────────────────────────
+  // Confirmar cita por ficha
   async function confirmar() {
     if (!pacSel || !idfichaSel) return;
     setSaving(true);
@@ -148,13 +136,27 @@ export default function PerfilPaciente() {
       });
       setOpen(false);
     } catch (e: any) {
-      console.error('crearCita error:', e?.message);
+      console.error('confirmarFichaProgramada error:', e?.message);
     } finally {
       setSaving(false);
     }
   }
 
-  // —— Estados de carga/errores de la pantalla
+  // Ir a agendar por especialidad con datos del paciente
+  function irAgendarEspecialidad(p: Persona) {
+    router.push({
+      pathname: '/user/agenda',
+      params: {
+        idp: String(p.idpoblacion),
+        nombre: p.nombre_completo || '',
+        matricula: p.matricula || '',
+        documento: p.documento || '',
+        
+      },
+    });
+  }
+
+
   if (loading)
     return (
       <View style={S.center}>
@@ -170,9 +172,6 @@ export default function PerfilPaciente() {
       </View>
     );
 
-  // ─────────────────────────────────────────────
-  // 4) Render principal
-  // ─────────────────────────────────────────────
   return (
     <View style={S.container}>
       <FlatList
@@ -184,7 +183,7 @@ export default function PerfilPaciente() {
           <View style={{ marginBottom: 12 }}>
             <Text style={S.title}>Mi grupo familiar</Text>
 
-            {/* Card del TITULAR */}
+            {/* TITULAR */}
             <Text style={S.sectionTitle}>Titular</Text>
             <View style={S.card}>
               <View style={S.avatar}>
@@ -197,13 +196,15 @@ export default function PerfilPaciente() {
                   {'  '}• CI: <Text style={S.metaBold}>{titular.documento || '—'}</Text>
                 </Text>
               </View>
-              <TouchableOpacity style={S.btn} onPress={() => abrirAgendar(titular)}>
+              <TouchableOpacity
+                style={[S.btn, { backgroundColor: '#111827', marginLeft: 8 }]}
+                onPress={() => irAgendarEspecialidad(titular)}
+              >
                 <Ionicons name="calendar" size={18} color="#fff" />
-                <Text style={S.btnTxt}> Agendar</Text>
+                <Text style={S.btnTxt}>  Agendar cita</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Subtítulo de afiliados */}
             <Text style={[S.sectionTitle, { marginTop: 16 }]}>Afiliados</Text>
           </View>
         }
@@ -219,60 +220,27 @@ export default function PerfilPaciente() {
                 {'  '}• CI: <Text style={S.metaBold}>{item.documento || '—'}</Text>
               </Text>
             </View>
-            <TouchableOpacity style={S.btn} onPress={() => abrirAgendar(item)}>
+            <TouchableOpacity
+              style={[S.btn, { backgroundColor: '#111827', marginLeft: 8 }]}
+              onPress={() => irAgendarEspecialidad(item)}
+            >
               <Ionicons name="calendar" size={18} color="#fff" />
-              <Text style={S.btnTxt}> Agendar</Text>
+              <Text style={S.btnTxt}>  Agendar cita</Text>
             </TouchableOpacity>
           </View>
         )}
       />
-
-      {/* 🗓️ Modal de agenda + Resumen del Paciente Seleccionado */}
-      <GroupInfoModal
-        visible={open}
-        loading={grupoLoading}
-        data={resumenSeleccionado}
-        onConfirm={confirmar}
-        onClose={() => setOpen(false)}
-      >
-        {/* Fecha */}
-        <Text style={S.label}>Fecha (YYYY-MM-DD)</Text>
-        <TextInput value={fecha} onChangeText={setFecha} style={S.input} />
-
-        {/* Horarios disponibles (del consultorio del usuario) */}
-        <Text style={S.label}>Hora</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {fichas.map((f) => (
-            <TouchableOpacity
-              key={f.idfichaprogramada}
-              style={[S.chip, f.hora === hora && S.chipActive]}
-              onPress={() => { setHora(f.hora); setIdfichaSel(f.idfichaprogramada); }}
-            >
-              <Text style={[S.chipTxt, f.hora === hora && S.chipTxtActive]}>{f.hora}</Text>
-            </TouchableOpacity>
-          ))}
-          {!fichas.length && <Text style={S.muted}>Sin horarios disponibles</Text>}
-        </View>
-
-        {/* Botón Confirmar dentro del modal (ya lo manejas con onConfirm) */}
-        {saving && (
-          <View style={{ marginTop: 8, alignItems: 'center' }}>
-            <ActivityIndicator />
-            <Text style={S.muted}>Creando cita…</Text>
-          </View>
-        )}
-      </GroupInfoModal>
     </View>
   );
 }
 
 const S = StyleSheet.create({
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 },
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   title: { fontSize: 22, fontWeight: '800', color: '#0F172A', margin: 16 },
   muted: { color: '#6B7280' },
   error: { color: '#EF4444', fontWeight: '700' },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, ActivityIndicator, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/src/hooks/useAuth';
 import { Text as PaperText } from 'react-native-paper';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -31,7 +31,7 @@ function WithInsets({ children }: { children: React.ReactNode }) {
       <PaperText variant="displaySmall">Caja Nacional de Salud</PaperText>
        </WithInsets>
       <TextInput
-        placeholder="Matrícula (ej. 123456789ABC)"
+        placeholder="Matrícula (ej. 123456ABC)"
         value={matricula}
         onChangeText={setMatricula}
         autoCapitalize="characters"

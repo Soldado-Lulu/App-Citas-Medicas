@@ -20,8 +20,8 @@ import {
   Snackbar,
 } from 'react-native-paper';
 
-import { get } from '@/services/http';
-import { listDisabledEsts, setDisabledEst } from '@/services/admin-estados.service';
+import { get } from '@/src/services/http';
+import { listDisabledEsts, setDisabledEst } from '@/src/services/admin-estados.service';
 
 // Tipo que devuelve tu API de establecimientos
 type Est = {

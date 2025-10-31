@@ -12,6 +12,7 @@ import establecimientosRoutes from './establecimientos/establecimientos.routes';
 import medicosRoutes from './medicos/medicos.routes';
 // ⚡️ Aquí puedes seguir agregando más módulos en el futuro
 import agendarRoutes from './agendar/agendar.routes';
+import especialidadesRoutes from './especialidades/especialidades.routes';
 // Creamos el router principal que agrupa todo
 const api = Router();
 api.use('/citas', citasRoutes);
@@ -22,6 +23,7 @@ api.use('/fichas', fichasRoutes);
 api.use('/establecimientos', establecimientosRoutes);
 api.use('/medicos',medicosRoutes); // Ejemplo de otro módulo
 api.use('/agendar', agendarRoutes);
+api.use('/especialidades',especialidadesRoutes);
 // Exportamos para usarlo en src/index.ts
 // (opcional) endpoint para listar rutas cargadas
 api.get('/__routes', (_req, res) => {

@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Slot, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Appbar } from 'react-native-paper';
-import { storage } from '@/lib/storage';
+import { storage } from '@/src/lib/storage';
 
 export default function AdminProtectedLayout() {
   const router = useRouter();
